@@ -35,6 +35,9 @@ docker compose up -d db
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver
+
+# To run tests, go to a directory and run:
+pytest -v 
 ```
 
 The admin panel is at http://127.0.0.1:8000/admin/.
