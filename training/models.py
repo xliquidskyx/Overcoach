@@ -51,32 +51,50 @@ class Profile(models.Model):
 
 
 class TrainingBlock(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="blocks")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="blocks"
+    )
     name = models.CharField(max_length=50)
     start_date = models.DateField()
     end_date = models.DateField()
     is_active = models.BooleanField(default=False)
 
+    @property
+    def duration_days(self):
+        """Length of the block in days, counting both the start and the end date."""
+        return (self.end_date - self.start_date).days + 1
+
     def __str__(self):
         return self.name
 
+
 class PlannedDay(models.Model):
-    training_block = models.ForeignKey(TrainingBlock, on_delete=models.CASCADE, related_name="days")
+    training_block = models.ForeignKey(
+        TrainingBlock, on_delete=models.CASCADE, related_name="days"
+    )
     name = models.CharField(max_length=50)
     position = models.PositiveSmallIntegerField()
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["training_block", "position"], name="planned_day_position_must_be_unique")
+            models.UniqueConstraint(
+                fields=["training_block", "position"],
+                name="planned_day_position_must_be_unique",
+            )
         ]
         ordering = ["position"]
 
     def __str__(self):
         return self.name
 
+
 class PlannedExercise(models.Model):
-    planned_day = models.ForeignKey(PlannedDay, on_delete=models.CASCADE, related_name="exercises")
-    exercise = models.ForeignKey(Exercise, on_delete=models.PROTECT, related_name="planned_exercises")
+    planned_day = models.ForeignKey(
+        PlannedDay, on_delete=models.CASCADE, related_name="exercises"
+    )
+    exercise = models.ForeignKey(
+        Exercise, on_delete=models.PROTECT, related_name="planned_exercises"
+    )
     position = models.PositiveSmallIntegerField()
     sets = models.PositiveSmallIntegerField()
     reps_min = models.PositiveSmallIntegerField()
@@ -89,7 +107,10 @@ class PlannedExercise(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["planned_day", "position"], name="planned_exercise_position_must_be_unique")
+            models.UniqueConstraint(
+                fields=["planned_day", "position"],
+                name="planned_exercise_position_must_be_unique",
+            )
         ]
         ordering = ["position"]
 

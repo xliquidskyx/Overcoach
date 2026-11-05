@@ -2,7 +2,7 @@
 
 A personal strength-training app built with Django. The goal is to plan training blocks, log workouts from a phone, track progress and measurements, and use an LLM to propose the next training block from that data. Every proposal is checked against explicit rules in code before it is accepted.
 
-> **Status:** early development. So far the project has a custom user model, the Django admin, and the first training models (exercises and user profiles). Training blocks and workout logging are next.
+> **Status:** early development. So far the project has a custom user model, the Django admin, and the training models: an exercise library, user profiles, and training plans (blocks, planned days, and planned exercises). Workout logging is next.
 
 ## Tech stack
 
@@ -50,6 +50,8 @@ pytest training                              # one app
 pytest training/tests/test_profile_functions.py::test_user_cannot_have_two_profiles  # one test
 ```
 
+Code is formatted with `ruff format .` (default settings).
+
 pytest-django creates a separate `test_<POSTGRES_DB>` database for the run, so the database user needs the `CREATEDB` privilege. The user created by the Postgres image is a superuser, so it already has it.
 
 The database runs in a container, and its data is kept in the named volume `postgres_data`, so it survives `docker compose down`. Running `docker compose down -v` deletes the volume and all data in it.
@@ -78,11 +80,13 @@ Docker Compose reads the same `.env` file, so Django and the database container 
 ```
 config/     project settings, root URLs, ASGI/WSGI
 accounts/   custom User model (AbstractUser with a unique, required email)
-training/   training domain: exercise library and user profiles (training blocks and workout logs to come)
+training/   training domain: exercise library, user profiles, training plans (workout logs to come)
 docs/       design decisions (decisions.md)
 ```
 
-The custom user model is set from the start (`AUTH_USER_MODEL = "accounts.User"`). Swapping the user model after the first migration is difficult. Training-specific data lives in a separate `Profile` model in the `training` app, linked one-to-one with `User`. The reasons behind these and other choices are recorded in [docs/decisions.md](docs/decisions.md).
+The custom user model is set from the start (`AUTH_USER_MODEL = "accounts.User"`). Swapping the user model after the first migration is difficult. Training-specific data lives in a separate `Profile` model in the `training` app, linked one-to-one with `User`.
+
+A training plan is a chain of models: a `TrainingBlock` belongs to a user and has a start and end date, it contains `PlannedDay`s numbered by their position in the cycle, and each day contains `PlannedExercise`s that point to an exercise in the shared library. A planned exercise stores only the targets (sets, a reps range, optional weight, rest, optional RIR/RPE). Actual results will go into the workout log, and progression will be computed from them. The reasons behind these and other choices are recorded in [docs/decisions.md](docs/decisions.md).
 
 ## Roadmap
 
@@ -90,7 +94,7 @@ The custom user model is set from the start (`AUTH_USER_MODEL = "accounts.User"`
 - [x] PostgreSQL in Docker Compose
 - [x] pytest setup
 - [x] Training models: exercises and user profiles
-- [ ] Training models: training blocks, planned days and exercises
+- [x] Training models: training blocks, planned days and exercises
 - [ ] Workout logging and measurements, mobile-friendly views
 - [ ] REST API with authentication
 - [ ] LLM-generated training blocks with rule validation and evals

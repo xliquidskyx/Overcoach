@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Overcoach is an early-stage Django 6.1 project (Python 3.14) on PostgreSQL 18, which runs in Docker Compose. It will be a personal strength-training app: you plan training blocks, log workouts, and have an LLM propose the next block, which explicit rules in code must validate before it is accepted (see the roadmap in `README.md`). So far there is the custom user model, the admin, and the first training models (`Exercise`, `Profile`). `config/urls.py` routes only `admin/`, and there are no views yet. No linter or formatter is configured.
+Overcoach is an early-stage Django 6.1 project (Python 3.14) on PostgreSQL 18, which runs in Docker Compose. It will be a personal strength-training app: you plan training blocks, log workouts, and have an LLM propose the next block, which explicit rules in code must validate before it is accepted (see the roadmap in `README.md`). So far there is the custom user model, the admin, and the training models (`Exercise`, `Profile`, and the plan models `TrainingBlock` → `PlannedDay` → `PlannedExercise`). `config/urls.py` routes only `admin/`, and there are no views or service functions yet.
+
+Code is formatted with `ruff format` (installed in `.venv`, but not listed in `requirements-dev.txt` and with no config file, so the defaults apply).
 
 ## Commands
 
@@ -19,6 +21,8 @@ python manage.py runserver
 python manage.py makemigrations
 python manage.py migrate
 python manage.py check
+
+ruff format .                         # format (ruff defaults)
 
 pytest                                                    # all tests
 pytest training                                           # one app
@@ -50,6 +54,9 @@ Email uses Django 6.1's `MAILERS` setting, not `EMAIL_BACKEND`, and currently pr
   - `Exercise` is a shared, curated library with a unique (case-sensitive) `name` and a movement-pattern `category`. Users do not create their own exercises.
   - `Profile` is one-to-one with the user and holds stable data only (goal, level, date of birth, `excluded_exercises`). Exclusions are an M2M on `Profile` (`related_name="excluded_by"`), because they are per user. Data that changes over time (weight, measurements, progress photos) goes into separate dated models, not into fields on `Profile`.
   - Profiles are created explicitly during onboarding (a planned service function in `training`), never by a `post_save` signal, and `goal` / `level` have no defaults on purpose. A user without a profile is a valid state that means onboarding isn't finished; `user.profile` raises for such users.
+  - The training plan is a chain of `ForeignKey`s: user → `TrainingBlock` (`related_name="blocks"`) → `PlannedDay` (`"days"`) → `PlannedExercise` (`"exercises"`), each one deleted with `CASCADE`. `PlannedExercise` → `Exercise` uses `PROTECT`, so an exercise that any plan uses cannot be deleted. Days and planned exercises are ordered by `position`, which is unique within their parent. Days are numbered positions in the cycle, not weekdays.
+  - `PlannedExercise` stores only the planned targets: a reps range (`reps_min`/`reps_max`, where a fixed number of reps has min = max), an optional `Decimal` weight, `rest_seconds`, and optional `rir`/`rpe`. It has no fields for actual results; those belong to the planned workout log, and progression will be computed from logged data.
+  - Several entries in `docs/decisions.md` describe things that are decided but not implemented yet: the `reps_min <= reps_max` check constraint (14), the conditional `UniqueConstraint` that allows only one active block per user (16), and the open questions about case-insensitive exercise names (10) and retiring exercises (17). Don't assume that the code already enforces them.
 
 ## Deployment
 

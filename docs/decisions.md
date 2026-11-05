@@ -143,7 +143,7 @@ A short record of the design decisions in Overcoach and the reasons behind them.
 - **Weight** is a `DecimalField` with `max_digits=6` and `decimal_places=2`, and it is optional, because some exercises use body weight only. Two decimal places cover the smallest plates (1.25 kg). Four digits before the decimal point are needed to store 1000 kg, the highest realistic load (for example on a leg press).
 - **Rest** is stored as a number of seconds in `rest_seconds`, not as a `TimeField`, which stores a time of day. The field cannot be called `break`, because that is a reserved word in Python.
 - **Counts** (sets, reps, rest) use positive integer types, so negative values are impossible in the database.
-- **Effort** has two optional fields, `rir` and `rpe`. RIR and RPE are two scales for the same thing (RPE ≈ 10 − RIR), and users can plan with whichever they prefer, or with neither.
+- **Effort** has two optional fields, `rir` and `rpe`. RIR and RPE are two scales for the same thing (RPE ≈ 10 − RIR), and users can plan with whichever they prefer, or with neither. `rir` is a positive integer. `rpe` is a `DecimalField` with `max_digits=3` and `decimal_places=1`, because RPE is commonly used in half steps (7.5, 8.5) and must be able to store 10.0. It is a decimal rather than a float for the same reason as weight.
 
 **Why `DecimalField`:** A float stores numbers in binary, so many decimal fractions cannot be stored exactly. A decimal stores exactly the value that was entered. Weights go up in steps such as 1.25 kg or 2.5 kg and are summed in progression calculations, so exact values matter.
 
@@ -153,7 +153,7 @@ A short record of the design decisions in Overcoach and the reasons behind them.
 
 **Date:** 2026-11-05
 
-**Decision:** `TrainingBlock` stores `start_date` and `end_date`. The duration is derived from them as a property.
+**Decision:** `TrainingBlock` stores `start_date` and `end_date`. The duration is derived from them as the `duration_days` property, which counts both the start and the end date (a block from Monday to Sunday lasts 7 days).
 
 **Why:** Any one of the three can be calculated from the other two. Storing all three lets them drift apart, for example when a block is extended and only the end date is changed.
 
