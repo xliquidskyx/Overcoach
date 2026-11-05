@@ -69,7 +69,7 @@ A short record of the design decisions in Overcoach and the reasons behind them.
 
 **Date:** 2026-11-04
 
-**Decision:** `Profile` contains `user`, `goal`, `level`, and `excluded_exercises`. Body weight, body measurements, and progress photos will be separate models, each with a date and linked to the user.
+**Decision:** `Profile` contains `user`, `date_of_birth`, `goal`, `level`, and `excluded_exercises`. Body weight, body measurements, and progress photos will be separate models, each with a date and linked to the user.
 
 **Why:** Weight, measurements, and photos change over time, and tracking progress is the core of the app. Storing them as single fields on the profile would overwrite history and keep only the latest value.
 
@@ -96,3 +96,86 @@ A short record of the design decisions in Overcoach and the reasons behind them.
 **Decision:** `Exercise.name` is unique. The app ships with a curated library of exercises that users choose from, rather than users creating their own.
 
 **Open question:** `unique=True` is case-sensitive in PostgreSQL, so "Squat" and "squat" can both be saved. Case-insensitive uniqueness still needs to be decided. If users are ever allowed to add their own exercises, uniqueness will need to be scoped per user instead of global.
+
+## 11. Training plan relations are foreign keys
+
+**Date:** 2026-11-05
+
+**Decision:** Every relation in the training plan is a `ForeignKey` on the "many" side:
+
+- `TrainingBlock` → user (`settings.AUTH_USER_MODEL`)
+- `PlannedDay` → `TrainingBlock`
+- `PlannedExercise` → `PlannedDay`
+- `PlannedExercise` → `Exercise`
+
+**Alternatives considered:**
+
+- `OneToOneField` for these relations: would allow only one block per user, one day per block, and one exercise per day.
+- A many-to-many field between `PlannedDay` and `Exercise`: the link needs its own data (sets, reps, weight, order), so it is a model of its own. `PlannedExercise` plays the role of the join table, with two foreign keys and extra fields.
+
+**Why:** A user has many blocks over time, a block has several days, and a day has several exercises. One row of `PlannedExercise` refers to exactly one exercise. An exercise appearing in many plans is already covered by the foreign key seen from the other side.
+
+## 12. Days are numbered within the cycle, not tied to weekdays
+
+**Date:** 2026-11-05
+
+**Decision:** `PlannedDay` stores its position in the cycle (day 1, day 2, …), not a day of the week.
+
+**Why:** Users decide which days they train. The cycle is written for a given number of training days per week. The app may suggest how to spread them across the week, but it does not impose a schedule.
+
+## 13. The plan stores targets; progression is computed from logged data
+
+**Date:** 2026-11-05
+
+**Decision:** `PlannedExercise` holds the planned targets only. It has no fields for previous reps or previous weight. Progression is computed by `services` from data the user logs during the block.
+
+**Alternative considered:** Separate rows for every week of the block, with the progression written in advance.
+
+**Why:** Nobody can predict in advance how a user will progress. Results that have already happened belong to the workout log (a separate model, planned for a later stage), for the same reason as decision 8: history must not be overwritten.
+
+## 14. Field types for planned exercises
+
+**Date:** 2026-11-05
+
+**Decision:**
+
+- **Reps** are a range, `reps_min` and `reps_max`, with no separate `reps` field. A fixed number of reps is a range where min equals max. The database will enforce `reps_min <= reps_max` with a check constraint.
+- **Weight** is a `DecimalField` with `max_digits=6` and `decimal_places=2`, and it is optional, because some exercises use body weight only. Two decimal places cover the smallest plates (1.25 kg). Four digits before the decimal point are needed to store 1000 kg, the highest realistic load (for example on a leg press).
+- **Rest** is stored as a number of seconds in `rest_seconds`, not as a `TimeField`, which stores a time of day. The field cannot be called `break`, because that is a reserved word in Python.
+- **Counts** (sets, reps, rest) use positive integer types, so negative values are impossible in the database.
+- **Effort** has two optional fields, `rir` and `rpe`. RIR and RPE are two scales for the same thing (RPE ≈ 10 − RIR), and users can plan with whichever they prefer, or with neither.
+
+**Why `DecimalField`:** A float stores numbers in binary, so many decimal fractions cannot be stored exactly. A decimal stores exactly the value that was entered. Weights go up in steps such as 1.25 kg or 2.5 kg and are summed in progression calculations, so exact values matter.
+
+**Known limitation:** `max_digits=6` accepts values up to 9999.99. If weights above 1000 kg should be rejected, that needs a separate check constraint or validator.
+
+## 15. Block dates without redundant fields
+
+**Date:** 2026-11-05
+
+**Decision:** `TrainingBlock` stores `start_date` and `end_date`. The duration is derived from them as a property.
+
+**Why:** Any one of the three can be calculated from the other two. Storing all three lets them drift apart, for example when a block is extended and only the end date is changed.
+
+## 16. Only one active block per user
+
+**Date:** 2026-11-05
+
+**Decision:** A user can have many blocks, but only one of them can be active at a time. This will be enforced in the database by a `UniqueConstraint` with a `condition` on the active flag.
+
+**Alternative considered:** A one-to-one relation between the user and the block. It would forbid a second block altogether, while the goal is only to forbid a second *active* block.
+
+## 17. Deletion behaviour
+
+**Date:** 2026-11-05
+
+**Decision:**
+
+- Deleting a user deletes their blocks (`CASCADE`).
+- Deleting a block deletes its days (`CASCADE`).
+- Deleting a day deletes its planned exercises (`CASCADE`). A planned exercise has no meaning without its day.
+- An `Exercise` from the library cannot be deleted while any plan uses it (`PROTECT`).
+
+**Why `PROTECT`:** Exercises must not silently disappear from plans. That applies to the active block and to archived blocks, which are the user's training history.
+
+**Open question:** Since a used exercise cannot be deleted, the library needs another way to retire exercises, for example an `is_active` flag on `Exercise`.

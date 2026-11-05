@@ -48,3 +48,50 @@ class Profile(models.Model):
 
     def __str__(self):
         return self.user.username
+
+
+class TrainingBlock(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="blocks")
+    name = models.CharField(max_length=50)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    is_active = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.name
+
+class PlannedDay(models.Model):
+    training_block = models.ForeignKey(TrainingBlock, on_delete=models.CASCADE, related_name="days")
+    name = models.CharField(max_length=50)
+    position = models.PositiveSmallIntegerField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["training_block", "position"], name="planned_day_position_must_be_unique")
+        ]
+        ordering = ["position"]
+
+    def __str__(self):
+        return self.name
+
+class PlannedExercise(models.Model):
+    planned_day = models.ForeignKey(PlannedDay, on_delete=models.CASCADE, related_name="exercises")
+    exercise = models.ForeignKey(Exercise, on_delete=models.PROTECT, related_name="planned_exercises")
+    position = models.PositiveSmallIntegerField()
+    sets = models.PositiveSmallIntegerField()
+    reps_min = models.PositiveSmallIntegerField()
+    reps_max = models.PositiveSmallIntegerField()
+    weight = models.DecimalField(decimal_places=2, max_digits=6, blank=True, null=True)
+    rest_seconds = models.PositiveSmallIntegerField()
+    rir = models.PositiveSmallIntegerField(blank=True, null=True)
+    rpe = models.DecimalField(decimal_places=1, max_digits=3, blank=True, null=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["planned_day", "position"], name="planned_exercise_position_must_be_unique")
+        ]
+        ordering = ["position"]
+
+    def __str__(self):
+        return self.exercise.name
