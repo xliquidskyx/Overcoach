@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -15,23 +14,86 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Exercise',
+            name="Exercise",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=50, unique=True)),
-                ('description', models.TextField(blank=True)),
-                ('category', models.CharField(choices=[('squat', 'Squat'), ('hinge', 'Hinge'), ('lunge', 'Lunge / single-leg'), ('horizontal_push', 'Horizontal push'), ('vertical_push', 'Vertical push'), ('horizontal_pull', 'Horizontal pull'), ('vertical_pull', 'Vertical pull'), ('carry', 'Carry'), ('core', 'Core'), ('isolation', 'Isolation'), ('conditioning', 'Conditioning / cardio'), ('mobility', 'Mobility')], max_length=15)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=50, unique=True)),
+                ("description", models.TextField(blank=True)),
+                (
+                    "category",
+                    models.CharField(
+                        choices=[
+                            ("squat", "Squat"),
+                            ("hinge", "Hinge"),
+                            ("lunge", "Lunge / single-leg"),
+                            ("horizontal_push", "Horizontal push"),
+                            ("vertical_push", "Vertical push"),
+                            ("horizontal_pull", "Horizontal pull"),
+                            ("vertical_pull", "Vertical pull"),
+                            ("carry", "Carry"),
+                            ("core", "Core"),
+                            ("isolation", "Isolation"),
+                            ("conditioning", "Conditioning / cardio"),
+                            ("mobility", "Mobility"),
+                        ],
+                        max_length=15,
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Profile',
+            name="Profile",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('date_of_birth', models.DateField()),
-                ('goal', models.CharField(choices=[('hypertrophy', 'Muscle building'), ('strength', 'Strength'), ('fat_loss', 'Fat loss'), ('recomposition', 'Body recomposition'), ('general_fitness', 'General fitness')], max_length=15)),
-                ('level', models.PositiveSmallIntegerField(choices=[(1, 'Beginner'), (2, 'Intermediate'), (3, 'Advanced')])),
-                ('excluded_exercises', models.ManyToManyField(blank=True, related_name='excluded_by', to='training.exercise')),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("date_of_birth", models.DateField()),
+                (
+                    "goal",
+                    models.CharField(
+                        choices=[
+                            ("hypertrophy", "Muscle building"),
+                            ("strength", "Strength"),
+                            ("fat_loss", "Fat loss"),
+                            ("recomposition", "Body recomposition"),
+                            ("general_fitness", "General fitness"),
+                        ],
+                        max_length=15,
+                    ),
+                ),
+                (
+                    "level",
+                    models.PositiveSmallIntegerField(
+                        choices=[(1, "Beginner"), (2, "Intermediate"), (3, "Advanced")]
+                    ),
+                ),
+                (
+                    "excluded_exercises",
+                    models.ManyToManyField(
+                        blank=True, related_name="excluded_by", to="training.exercise"
+                    ),
+                ),
+                (
+                    "user",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]

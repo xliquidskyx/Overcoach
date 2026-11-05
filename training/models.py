@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 
+
 class Exercise(models.Model):
     class Category(models.TextChoices):
         SQUAT = "squat", "Squat"
@@ -23,6 +24,7 @@ class Exercise(models.Model):
     def __str__(self):
         return self.name
 
+
 class Profile(models.Model):
     class Goal(models.TextChoices):
         HYPERTROPHY = "hypertrophy", "Muscle building"
@@ -40,7 +42,9 @@ class Profile(models.Model):
     date_of_birth = models.DateField()
     goal = models.CharField(choices=Goal, max_length=15)
     level = models.PositiveSmallIntegerField(choices=Level)
-    excluded_exercises = models.ManyToManyField(Exercise, related_name="excluded_by", blank=True)
+    excluded_exercises = models.ManyToManyField(
+        Exercise, related_name="excluded_by", blank=True
+    )
 
     def __str__(self):
         return self.user.username
