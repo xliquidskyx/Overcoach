@@ -5,10 +5,8 @@ User = get_user_model()
 
 
 @pytest.mark.django_db
-def test_create_user():
-    user = User.objects.create_user(
-        username="Laura", email="laura@example.com", password="strongpassword"
-    )
+def test_create_user(make_user):
+    user = make_user(username="Laura", email="laura@example.com")
     user.refresh_from_db()
     assert user.username == "Laura"
     assert user.password != "strongpassword"  # Checks if pwd has been hashed
@@ -17,15 +15,15 @@ def test_create_user():
 
 
 @pytest.mark.django_db
-def test_create_user_without_email_raises_error():
+def test_create_user_without_email_raises_error(make_user):
     with pytest.raises(ValueError):
-        User.objects.create_user(username="John", password="strongpassword")
+        make_user(email=None)
 
 
 @pytest.mark.django_db
-def test_create_user_with_empty_email_raises_error():
+def test_create_user_with_empty_email_raises_error(make_user):
     with pytest.raises(ValueError):
-        User.objects.create_user(username="John", email=" ", password="strongpassword")
+        make_user(email=" ")
 
 
 @pytest.mark.django_db
