@@ -20,7 +20,7 @@ class Exercise(models.Model):
 
     name = models.CharField(max_length=50, unique=True)
     description = models.TextField(blank=True)
-    category = models.CharField(choices=Category, max_length=15)
+    category = models.CharField(choices=Category, max_length=20)
 
     def __str__(self):
         return self.name
@@ -41,7 +41,7 @@ class Profile(models.Model):
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     date_of_birth = models.DateField()
-    goal = models.CharField(choices=Goal, max_length=15)
+    goal = models.CharField(choices=Goal, max_length=20)
     level = models.PositiveSmallIntegerField(choices=Level)
     excluded_exercises = models.ManyToManyField(
         Exercise, related_name="excluded_by", blank=True
@@ -72,6 +72,7 @@ class TrainingBlock(models.Model):
                 name="training_block_end_date_after_start_date",
             ),
         ]
+        ordering = ["-start_date", "-id"]
 
     @property
     def duration_days(self):
@@ -136,6 +137,13 @@ class PlannedExercise(models.Model):
             CheckConstraint(condition=Q(sets__gt=0), name="planned_exercise_sets_gt_0"),
             CheckConstraint(
                 condition=Q(reps_min__gt=0), name="planned_exercise_reps_min_gt_0"
+            ),
+            CheckConstraint(
+                condition=Q(weight__range=(0, 1000)),
+                name="planned_exercise_weight_between_0_and_1000",
+            ),
+            CheckConstraint(
+                condition=Q(rir__lte=10), name="planned_exercise_rir_lte_10"
             ),
         ]
         ordering = ["position"]

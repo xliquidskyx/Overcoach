@@ -1,4 +1,5 @@
 import datetime
+from decimal import Decimal
 import itertools
 import pytest
 from django.contrib.auth import get_user_model
@@ -105,7 +106,7 @@ def make_planned_exercise(db, make_day, make_exercise):
             "sets": 3,
             "reps_min": 8,
             "reps_max": 10,
-            "weight": 50.0,
+            "weight": Decimal("50.0"),
             "rest_seconds": 120,
         }
         data.update(kwargs)

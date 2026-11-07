@@ -139,15 +139,15 @@ A short record of the design decisions in Overcoach and the reasons behind them.
 
 **Decision:**
 
-- **Reps** are a range, `reps_min` and `reps_max`, with no separate `reps` field. A fixed number of reps is a range where min equals max. The database will enforce `reps_min <= reps_max` with a check constraint.
+- **Reps** are a range, `reps_min` and `reps_max`, with no separate `reps` field. A fixed number of reps is a range where min equals max. The database enforces `reps_max >= reps_min` with a check constraint (see 18).
 - **Weight** is a `DecimalField` with `max_digits=6` and `decimal_places=2`, and it is optional, because some exercises use body weight only. Two decimal places cover the smallest plates (1.25 kg). Four digits before the decimal point are needed to store 1000 kg, the highest realistic load (for example on a leg press).
 - **Rest** is stored as a number of seconds in `rest_seconds`, not as a `TimeField`, which stores a time of day. The field cannot be called `break`, because that is a reserved word in Python.
 - **Counts** (sets, reps, rest) use positive integer types, so negative values are impossible in the database.
-- **Effort** has two optional fields, `rir` and `rpe`. RIR and RPE are two scales for the same thing (RPE ≈ 10 − RIR), and users can plan with whichever they prefer, or with neither. `rir` is a positive integer. `rpe` is a `DecimalField` with `max_digits=3` and `decimal_places=1`, because RPE is commonly used in half steps (7.5, 8.5) and must be able to store 10.0. It is a decimal rather than a float for the same reason as weight.
+- **Effort** has two optional fields, `rir` and `rpe`. RIR and RPE are two scales for the same thing (RPE ≈ 10 − RIR), and users can plan with whichever they prefer, or with neither. `rir` is a positive integer of at most 10. `rpe` is a `DecimalField` with `max_digits=3` and `decimal_places=1`, because RPE is commonly used in half steps (7.5, 8.5) and must be able to store 10.0. It is a decimal rather than a float for the same reason as weight.
 
 **Why `DecimalField`:** A float stores numbers in binary, so many decimal fractions cannot be stored exactly. A decimal stores exactly the value that was entered. Weights go up in steps such as 1.25 kg or 2.5 kg and are summed in progression calculations, so exact values matter.
 
-**Known limitation:** `max_digits=6` accepts values up to 9999.99. If weights above 1000 kg should be rejected, that needs a separate check constraint or validator.
+**Range:** `max_digits=6` alone would accept values up to 9999.99, so a check constraint limits weight to 0–1000 kg (see 18).
 
 ## 15. Block dates without redundant fields
 
@@ -161,7 +161,9 @@ A short record of the design decisions in Overcoach and the reasons behind them.
 
 **Date:** 2026-11-05
 
-**Decision:** A user can have many blocks, but only one of them can be active at a time. This will be enforced in the database by a `UniqueConstraint` with a `condition` on the active flag.
+**Decision:** A user can have many blocks, but only one of them can be active at a time. This is enforced in the database by a `UniqueConstraint` on `user` with `condition=Q(is_active=True)` (`training_block_one_active_per_user`). PostgreSQL builds it as a partial unique index that covers only active blocks, so any number of inactive blocks is allowed.
+
+**Consequence:** switching the active block has to deactivate the old block before activating the new one, in a single transaction. In the opposite order, two blocks would be active for a moment and the constraint would reject the change.
 
 **Alternative considered:** A one-to-one relation between the user and the block. It would forbid a second block altogether, while the goal is only to forbid a second *active* block.
 
@@ -179,3 +181,49 @@ A short record of the design decisions in Overcoach and the reasons behind them.
 **Why `PROTECT`:** Exercises must not silently disappear from plans. That applies to the active block and to archived blocks, which are the user's training history.
 
 **Open question:** Since a used exercise cannot be deleted, the library needs another way to retire exercises, for example an `is_active` flag on `Exercise`.
+
+## 18. Plan rules are enforced by database constraints
+
+**Date:** 2026-11-06
+
+**Decision:** The rules a training plan must follow are check and unique constraints in `Meta.constraints`, enforced by PostgreSQL:
+
+- `TrainingBlock`: one active block per user (16), and `end_date >= start_date`, so `duration_days` cannot be negative. A one-day block (start equals end) is allowed.
+- `PlannedDay` and `PlannedExercise`: `position` is unique within the parent block or day.
+- `PlannedExercise`: `reps_max >= reps_min`, `sets > 0`, `reps_min > 0`, `rpe` between 0 and 10, `rir` at most 10, and `weight` between 0 and 1000 kg.
+
+Constraint names start with the model name (for example `planned_exercise_reps_min_gt_0`), because they must be unique across the whole database.
+
+**Alternative considered:** Validators on the model fields or in forms only.
+
+**Why:** Validators run only when something calls `full_clean()`, which `save()`, `objects.create()`, the shell, and raw SQL do not do. A constraint holds whichever way the data arrives, including the future LLM-generated blocks. Optional fields (`rpe`, `rir`, `weight`) need no extra `NULL` handling, because a `CHECK` constraint rejects only a false result, and a comparison with `NULL` is unknown, not false.
+
+**Consequence:** Adding a constraint fails if existing rows already break it. Locally the data was fixed by hand before `migrate`. On a production database, a data migration (`RunPython`) that cleans up existing rows has to run before the migration that adds the constraint.
+
+**Tests:** Each constraint has a test that expects `IntegrityError` and a test for the boundary value that must still pass (for example `reps_min == reps_max`, `rpe` of 0 and 10, `rpe=None`).
+
+## 19. Test data comes from factory fixtures
+
+**Date:** 2026-11-06
+
+**Decision:** The root `conftest.py` provides factory fixtures (`make_user`, `make_profile`, `make_exercise`, `make_block`, `make_day`, `make_planned_exercise`). Each returns a function that takes field overrides as keyword arguments, fills in valid defaults, and creates a missing parent object through the parent's factory. A shared `itertools.count` counter keeps unique fields (`username`, `email`, `Exercise.name`) from colliding.
+
+**Alternative considered:** Fixtures that each return one ready-made object.
+
+**Why:** Many tests need two objects of the same kind with different values, for example two blocks of the same user, one active and one not. A factory gives that with two calls, without a new fixture for every case. Defaults always satisfy every constraint, so an `IntegrityError` in a test means a real problem, not a collision in test data. Tests that check a rule "within a parent" (positions, the active block) create the parent explicitly and pass it to every call, because a factory called without it builds a new parent each time.
+
+## 20. Blocks are ordered newest first
+
+**Date:** 2026-11-06
+
+**Decision:** `TrainingBlock` has `ordering = ["-start_date", "-id"]`.
+
+**Why:** Blocks are a training history, and the current or latest block is the one most often needed. `-id` breaks ties between blocks with the same start date, so the order is fully deterministic. `ordering` changes only the `ORDER BY` of queries, not the table, so its migration (`AlterModelOptions`) runs no SQL.
+
+## 21. Choice fields have room to grow
+
+**Date:** 2026-11-06
+
+**Decision:** `Exercise.category` and `Profile.goal` have `max_length=20`.
+
+**Why:** The longest existing values (`horizontal_push`, `general_fitness`) were exactly 15 characters, the previous limit. Any longer choice added later would have failed only when saved. The extra room costs nothing in PostgreSQL, where `varchar(n)` stores only the actual length.

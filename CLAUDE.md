@@ -31,6 +31,8 @@ pytest training/tests/test_profile_functions.py::test_user_cannot_have_two_profi
 
 Tests run with pytest + pytest-django (`pytest.ini` sets `DJANGO_SETTINGS_MODULE = config.settings`), not `manage.py test`. They are plain functions in `<app>/tests/test_*.py`, and a test that touches the database must be marked `@pytest.mark.django_db`.
 
+The root `conftest.py` provides factory fixtures: `make_user`, `make_profile`, `make_exercise`, `make_block`, `make_day` and `make_planned_exercise`. Each one returns a function that takes field overrides as kwargs, builds any missing parents itself (for example `make_planned_exercise()` creates a day, a block, a user and an exercise), and uses a shared counter so unique fields (`username`, `email`, `Exercise.name`, `position`) don't collide. Use these fixtures instead of creating objects by hand. Database constraints are tested by asserting `pytest.raises(IntegrityError)` on a factory call (see `training/tests/test_plan_constraints.py`).
+
 ## Configuration
 
 `config/settings.py` reads its values from a git-ignored `.env` at the repo root through `django-environ` (`.env.example` lists every variable).
@@ -56,7 +58,8 @@ Email uses Django 6.1's `MAILERS` setting, not `EMAIL_BACKEND`, and currently pr
   - Profiles are created explicitly during onboarding (a planned service function in `training`), never by a `post_save` signal, and `goal` / `level` have no defaults on purpose. A user without a profile is a valid state that means onboarding isn't finished; `user.profile` raises for such users.
   - The training plan is a chain of `ForeignKey`s: user → `TrainingBlock` (`related_name="blocks"`) → `PlannedDay` (`"days"`) → `PlannedExercise` (`"exercises"`), each one deleted with `CASCADE`. `PlannedExercise` → `Exercise` uses `PROTECT`, so an exercise that any plan uses cannot be deleted. Days and planned exercises are ordered by `position`, which is unique within their parent. Days are numbered positions in the cycle, not weekdays.
   - `PlannedExercise` stores only the planned targets: a reps range (`reps_min`/`reps_max`, where a fixed number of reps has min = max), an optional `Decimal` weight, `rest_seconds`, and optional `rir`/`rpe`. It has no fields for actual results; those belong to the planned workout log, and progression will be computed from logged data.
-  - Several entries in `docs/decisions.md` describe things that are decided but not implemented yet: the `reps_min <= reps_max` check constraint (14), the conditional `UniqueConstraint` that allows only one active block per user (16), and the open questions about case-insensitive exercise names (10) and retiring exercises (17). Don't assume that the code already enforces them.
+  - Data integrity is enforced in the database through `Meta.constraints`, not only through validators: one active block per user (a conditional `UniqueConstraint`), `end_date >= start_date`, unique `position` per parent, `reps_max >= reps_min`, `sets > 0`, `reps_min > 0`, `rpe` between 0 and 10, `rir <= 10`, and `weight` between 0 and 1000. `TrainingBlock` is ordered newest first (`-start_date`, `-id`).
+  - The open questions in `docs/decisions.md` are still unresolved: case-insensitive exercise names (10) and how to retire exercises that plans use (17). Entry 18 lists every constraint; `training/models.py` is the source of truth for what is enforced.
 
 ## Deployment
 
