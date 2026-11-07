@@ -5,35 +5,52 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('training', '0002_trainingblock_plannedday_plannedexercise_and_more'),
+        ("training", "0002_trainingblock_plannedday_plannedexercise_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddConstraint(
-            model_name='plannedexercise',
-            constraint=models.CheckConstraint(condition=models.Q(('reps_max__gte', models.F('reps_min'))), name='planned_exercise_reps_max_gte_reps_min'),
+            model_name="plannedexercise",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("reps_max__gte", models.F("reps_min"))),
+                name="planned_exercise_reps_max_gte_reps_min",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='plannedexercise',
-            constraint=models.CheckConstraint(condition=models.Q(('rpe__range', (0, 10))), name='planned_exercise_rpe_between_0_and_10'),
+            model_name="plannedexercise",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("rpe__range", (0, 10))),
+                name="planned_exercise_rpe_between_0_and_10",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='plannedexercise',
-            constraint=models.CheckConstraint(condition=models.Q(('sets__gt', 0)), name='planned_exercise_sets_gt_0'),
+            model_name="plannedexercise",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("sets__gt", 0)), name="planned_exercise_sets_gt_0"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='plannedexercise',
-            constraint=models.CheckConstraint(condition=models.Q(('reps_min__gt', 0)), name='planned_exercise_reps_min_gt_0'),
+            model_name="plannedexercise",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("reps_min__gt", 0)),
+                name="planned_exercise_reps_min_gt_0",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='trainingblock',
-            constraint=models.UniqueConstraint(condition=models.Q(('is_active', True)), fields=('user',), name='training_block_one_active_per_user'),
+            model_name="trainingblock",
+            constraint=models.UniqueConstraint(
+                condition=models.Q(("is_active", True)),
+                fields=("user",),
+                name="training_block_one_active_per_user",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='trainingblock',
-            constraint=models.CheckConstraint(condition=models.Q(('end_date__gte', models.F('start_date'))), name='training_block_end_date_after_start_date'),
+            model_name="trainingblock",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("end_date__gte", models.F("start_date"))),
+                name="training_block_end_date_after_start_date",
+            ),
         ),
     ]
