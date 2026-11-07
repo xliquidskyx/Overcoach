@@ -2,7 +2,13 @@ import datetime
 import itertools
 import pytest
 from django.contrib.auth import get_user_model
-from training.models import Exercise, Profile
+from training.models import (
+    Exercise,
+    Profile,
+    TrainingBlock,
+    PlannedDay,
+    PlannedExercise,
+)
 
 _counter = itertools.count(1)
 User = get_user_model()
@@ -42,11 +48,67 @@ def make_profile(db, make_user):
 @pytest.fixture
 def make_exercise(db):
     def _create_exercise(**kwargs):
+        n = next(_counter)
         data = {
-            "name": "Squat",
+            "name": f"Squat {n}",
             "category": Exercise.Category.SQUAT,
         }
         data.update(kwargs)
         return Exercise.objects.create(**data)
 
     return _create_exercise
+
+
+@pytest.fixture
+def make_block(db, make_user):
+    def _create_block(**kwargs):
+        if "user" not in kwargs:
+            kwargs["user"] = make_user()
+        data = {
+            "name": "Winter Recomposition",
+            "start_date": datetime.date(2026, 11, 1),
+            "end_date": datetime.date(2027, 3, 1),
+            "is_active": False,
+        }
+        data.update(kwargs)
+        return TrainingBlock.objects.create(**data)
+
+    return _create_block
+
+
+@pytest.fixture
+def make_day(db, make_block):
+    def _create_day(**kwargs):
+        n = next(_counter)
+        if "training_block" not in kwargs:
+            kwargs["training_block"] = make_block()
+        data = {
+            "name": f"Push day {n}",
+            "position": n,
+        }
+        data.update(kwargs)
+        return PlannedDay.objects.create(**data)
+
+    return _create_day
+
+
+@pytest.fixture
+def make_planned_exercise(db, make_day, make_exercise):
+    def _create_planned_exercise(**kwargs):
+        n = next(_counter)
+        if "planned_day" not in kwargs:
+            kwargs["planned_day"] = make_day()
+        if "exercise" not in kwargs:
+            kwargs["exercise"] = make_exercise()
+        data = {
+            "position": n,
+            "sets": 3,
+            "reps_min": 8,
+            "reps_max": 10,
+            "weight": 50.0,
+            "rest_seconds": 120,
+        }
+        data.update(kwargs)
+        return PlannedExercise.objects.create(**data)
+
+    return _create_planned_exercise
