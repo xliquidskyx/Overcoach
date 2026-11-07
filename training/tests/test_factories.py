@@ -42,6 +42,7 @@ def test_make_day_create_distinct_objects(make_day):
     assert first_day.pk != second_day.pk
     assert PlannedDay.objects.count() == 2
 
+
 @pytest.mark.django_db
 def test_make_planned_exercise_create_distinct_objects(make_planned_exercise):
     first_planned_exercise = make_planned_exercise()

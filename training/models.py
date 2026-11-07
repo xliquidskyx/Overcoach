@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import CheckConstraint, UniqueConstraint, Q, F
 from django.conf import settings
 
 
@@ -59,6 +60,19 @@ class TrainingBlock(models.Model):
     end_date = models.DateField()
     is_active = models.BooleanField(default=False)
 
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["user"],
+                condition=Q(is_active=True),
+                name="training_block_one_active_per_user",
+            ),
+            CheckConstraint(
+                condition=Q(end_date__gte=F("start_date")),
+                name="training_block_end_date_after_start_date",
+            ),
+        ]
+
     @property
     def duration_days(self):
         """Length of the block in days, counting both the start and the end date."""
@@ -77,7 +91,7 @@ class PlannedDay(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(
+            UniqueConstraint(
                 fields=["training_block", "position"],
                 name="planned_day_position_must_be_unique",
             )
@@ -107,10 +121,22 @@ class PlannedExercise(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(
+            UniqueConstraint(
                 fields=["planned_day", "position"],
                 name="planned_exercise_position_must_be_unique",
-            )
+            ),
+            CheckConstraint(
+                condition=Q(reps_max__gte=F("reps_min")),
+                name="planned_exercise_reps_max_gte_reps_min",
+            ),
+            CheckConstraint(
+                condition=Q(rpe__range=(0, 10)),
+                name="planned_exercise_rpe_between_0_and_10",
+            ),
+            CheckConstraint(condition=Q(sets__gt=0), name="planned_exercise_sets_gt_0"),
+            CheckConstraint(
+                condition=Q(reps_min__gt=0), name="planned_exercise_reps_min_gt_0"
+            ),
         ]
         ordering = ["position"]
 
