@@ -2,7 +2,7 @@
 
 A personal strength-training app built with Django. The goal is to plan training blocks, log workouts from a phone, track progress and measurements, and use an LLM to propose the next training block from that data. Every proposal is checked against explicit rules in code before it is accepted.
 
-> **Status:** early development. So far the project has a custom user model, the Django admin, and the training models: an exercise library, user profiles, and training plans (blocks, planned days, and planned exercises). The plan's integrity rules are enforced as database constraints and covered by tests. Configuring the admin for training plans is next, then workout logging.
+> **Status:** early development. So far the project has a custom user model, the Django admin, and the training models: an exercise library, user profiles, and training plans (blocks, planned days, and planned exercises). The plan's integrity rules are enforced as database constraints and covered by tests, and the admin can edit whole training plans (days and exercises inline). Workout logging is next.
 
 ## Tech stack
 
@@ -34,11 +34,14 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 docker compose up -d db
 
 python manage.py migrate
+python manage.py loaddata exercises   # exercise library
 python manage.py createsuperuser
 python manage.py runserver
 ```
 
-The admin panel is at http://127.0.0.1:8000/admin/.
+The admin panel is at http://127.0.0.1:8000/admin/. A training block is edited on its own page with its days inline; each day links to a page where its exercises are edited inline, with exercise search. Django has no nested inlines, so a plan is edited on these two levels.
+
+`loaddata exercises` loads the exercise library from `training/fixtures/exercises.json`. Every entry has a fixed primary key, so running the command again updates the same rows instead of adding duplicates.
 
 ### Running tests
 
@@ -81,7 +84,7 @@ Docker Compose reads the same `.env` file, so Django and the database container 
 
 ```
 config/     project settings, root URLs, ASGI/WSGI
-accounts/   custom User model (AbstractUser with a unique, required email)
+accounts/   custom User model (AbstractUser with a required email, unique regardless of letter case)
 training/   training domain: exercise library, user profiles, training plans (workout logs to come)
 docs/       design decisions (decisions.md)
 ```
@@ -100,7 +103,7 @@ The rules a plan must follow are enforced by PostgreSQL through `Meta.constraint
 - [x] Training models: exercises and user profiles
 - [x] Training models: training blocks, planned days and exercises
 - [x] Database constraints and model tests with factory fixtures
-- [ ] Admin for training plans (inline days and exercises)
+- [x] Admin for training plans (inline days and exercises)
 - [ ] Workout logging and measurements, mobile-friendly views
 - [ ] REST API with authentication
 - [ ] LLM-generated training blocks with rule validation and evals

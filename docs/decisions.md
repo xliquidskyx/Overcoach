@@ -47,7 +47,7 @@ A short record of the design decisions in Overcoach and the reasons behind them.
 - Extending `BaseUserManager`: would mean re-implementing behaviour that `UserManager` already provides.
 - Overriding the private `_create_user`: relies on Django internals.
 
-**Known limitation:** The manager only guards the `create_user` / `create_superuser` path. `User.objects.create()`, `save()` after editing a user, and raw SQL bypass it. A database-level constraint would close that gap.
+**Known limitation (resolved in 22):** The manager only guards the `create_user` / `create_superuser` path. `User.objects.create()`, `save()` after editing a user, and raw SQL bypass it. Database constraints now close that gap; the manager stays for its clear `ValueError` at creation time.
 
 ## 6. Excluded exercises as a many-to-many relation on Profile
 
@@ -227,3 +227,50 @@ Constraint names start with the model name (for example `planned_exercise_reps_m
 **Decision:** `Exercise.category` and `Profile.goal` have `max_length=20`.
 
 **Why:** The longest existing values (`horizontal_push`, `general_fitness`) were exactly 15 characters, the previous limit. Any longer choice added later would have failed only when saved. The extra room costs nothing in PostgreSQL, where `varchar(n)` stores only the actual length.
+
+## 22. Email rules are enforced by database constraints
+
+**Date:** 2026-11-09
+
+**Context:** Creating a user in the admin with `TEST@EXAMPLE.COM`, while `test@example.com` existed, ended in a 500 error from PostgreSQL instead of a form error. The database had a case-insensitive unique index, but the model had no `Meta.constraints`, so Django never validated the rule. The index came from a migration that had been applied locally and then disappeared from the repository (only its `.pyc` cache was left), so the database and the code were out of sync. Because the local data was only test data, the database was reset (`docker compose down -v`) and the rules were written properly.
+
+**Decision:** `User.Meta.constraints` has `user_email_ci_unique` (a `UniqueConstraint` on `Lower("email")`, with the message "A user with that email already exists.") and `user_email_not_empty` (a `CheckConstraint` with `~Q(email="")`). The email field no longer has `unique=True`. `User.Meta` extends `AbstractUser.Meta`, so the inherited options (`verbose_name`) are kept.
+
+**Alternatives considered:**
+
+- Keeping `unique=True` next to the new constraint: two indexes for one rule, and an exact duplicate would show two error messages.
+- A raw `CREATE UNIQUE INDEX` in a migration: the database enforces it, but Django does not know about it and cannot show a form error. This was the original bug.
+
+**Why:** A constraint in `Meta` is enforced by the database and also validated by Django in model forms, so bad data is rejected with a readable message before it reaches the database. Because a constraint built on an expression is not tied to one field, the duplicate error appears as a non-field error (`NON_FIELD_ERRORS`), at the top of the form.
+
+**Consequence:** Claude Code may no longer create, edit or apply migrations (see `CLAUDE.md`). Applied migrations are never edited by hand; only formatting changes by `ruff format` are accepted.
+
+## 23. The admin uses a subclass of Django's UserAdmin
+
+**Date:** 2026-11-09
+
+**Decision:** `accounts/admin.py` registers a subclass of `django.contrib.auth.admin.UserAdmin` and adds `email` to `add_fieldsets`, copied from the installed Django version (it includes `usable_password`). `list_display` and `search_fields` already contain `email` in the base class.
+
+**Alternative considered:** A plain `ModelAdmin`: its form would save the password as plain text instead of hashing it.
+
+**Tests:** `accounts/tests/test_admin.py` uses the `admin_client` fixture: the add form has an email field, a valid POST redirects to the new user's change page and stores a hashed password, and a case-insensitive duplicate or an empty email re-renders the form with an error and creates no user.
+
+## 24. The exercise library is a fixture with fixed primary keys
+
+**Date:** 2026-11-09
+
+**Decision:** `training/fixtures/exercises.json` holds the exercises of the current training block, loaded with `loaddata exercises`. Every entry has an explicit `pk`, so loading again updates the same rows. An exercise variant gets its own entry when its loads are not comparable with the base exercise (leg press with feet low or high, seated leg curl with one or two legs, dumbbell or cable lateral raise). A heavier and a lighter prescription of the same movement (hip thrust) is one exercise; the difference belongs to `PlannedExercise`.
+
+**Alternative considered:** A data migration (`RunPython`): right for data that must exist on every database, including production. The library is still being shaped, so a fixture is enough for now.
+
+**Known limitation:** `loaddata` does not call `full_clean()`, so a wrong `category` value (a label instead of the stored value) would load without an error. Only database constraints apply.
+
+## 25. The training plan admin has two levels of inlines
+
+**Date:** 2026-11-09
+
+**Decision:** `TrainingBlockAdmin` shows days as a `TabularInline` with `show_change_link`, and `PlannedDayAdmin` shows exercises as a `TabularInline` with `autocomplete_fields` for the exercise. Inlines have `extra = 0`. List views use `list_select_related` for the foreign keys they display, and `ProfileAdmin` uses it for `user`, because `Profile.__str__` reads `user.username`.
+
+**Alternative considered:** Nested inlines (exercises inside days inside a block) through a third-party package: Django does not support them, and a dependency only for the admin is not worth it.
+
+**How it was made:** The admin configuration was generated by Claude Code from a written specification, then reviewed line by line and tested by hand in the browser before committing.
