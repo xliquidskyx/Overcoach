@@ -1,0 +1,236 @@
+[
+  {
+    "model": "training.exercise",
+    "pk": 1,
+    "fields": {
+      "name": "Machine hip thrust",
+      "description": "Machine hip thrust. Heavy and lighter variants are prescribed in the plan, not separate exercises.",
+      "category": "hinge"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 2,
+    "fields": {
+      "name": "Leg press (feet low)",
+      "description": "Feet low on the platform: quad emphasis.",
+      "category": "squat"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 3,
+    "fields": {
+      "name": "Leg press (feet high)",
+      "description": "Feet high on the platform: glute and hamstring emphasis.",
+      "category": "squat"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 4,
+    "fields": {
+      "name": "Cable step-up",
+      "description": "",
+      "category": "lunge"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 5,
+    "fields": {
+      "name": "Leg extension",
+      "description": "Machine. Quads.",
+      "category": "isolation"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 6,
+    "fields": {
+      "name": "Machine hip abduction",
+      "description": "Glutes.",
+      "category": "isolation"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 7,
+    "fields": {
+      "name": "Standing calf raise",
+      "description": "",
+      "category": "isolation"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 8,
+    "fields": {
+      "name": "Bulgarian split squat",
+      "description": "",
+      "category": "lunge"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 9,
+    "fields": {
+      "name": "Seated leg curl",
+      "description": "Machine. Hamstrings.",
+      "category": "isolation"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 10,
+    "fields": {
+      "name": "Single-leg seated leg curl",
+      "description": "Machine. Hamstrings, one leg at a time.",
+      "category": "isolation"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 11,
+    "fields": {
+      "name": "Cable glute kickback",
+      "description": "",
+      "category": "isolation"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 12,
+    "fields": {
+      "name": "Seated calf raise",
+      "description": "",
+      "category": "isolation"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 13,
+    "fields": {
+      "name": "Walking lunge",
+      "description": "",
+      "category": "lunge"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 14,
+    "fields": {
+      "name": "Pull-up",
+      "description": "Bodyweight. Extra load logged as weight.",
+      "category": "vertical_pull"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 15,
+    "fields": {
+      "name": "Chest-supported row",
+      "description": "",
+      "category": "horizontal_pull"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 16,
+    "fields": {
+      "name": "One-arm dumbbell row",
+      "description": "",
+      "category": "horizontal_pull"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 17,
+    "fields": {
+      "name": "Incline bench press",
+      "description": "",
+      "category": "horizontal_push"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 18,
+    "fields": {
+      "name": "Dumbbell lateral raise",
+      "description": "Side delts.",
+      "category": "isolation"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 19,
+    "fields": {
+      "name": "Biceps curl",
+      "description": "",
+      "category": "isolation"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 20,
+    "fields": {
+      "name": "Machine crunch",
+      "description": "",
+      "category": "core"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 21,
+    "fields": {
+      "name": "Seated cable row",
+      "description": "",
+      "category": "horizontal_pull"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 22,
+    "fields": {
+      "name": "Dumbbell overhead press",
+      "description": "",
+      "category": "vertical_push"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 23,
+    "fields": {
+      "name": "Close-grip lat pulldown",
+      "description": "",
+      "category": "vertical_pull"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 24,
+    "fields": {
+      "name": "Reverse fly",
+      "description": "Rear delts.",
+      "category": "isolation"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 25,
+    "fields": {
+      "name": "Cable lateral raise",
+      "description": "Side delts.",
+      "category": "isolation"
+    }
+  },
+  {
+    "model": "training.exercise",
+    "pk": 26,
+    "fields": {
+      "name": "Cable triceps pushdown",
+      "description": "",
+      "category": "isolation"
+    }
+  }
+]
