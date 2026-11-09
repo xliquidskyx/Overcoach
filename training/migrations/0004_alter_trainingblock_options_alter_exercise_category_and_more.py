@@ -4,32 +4,64 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('training', '0003_plannedexercise_planned_exercise_reps_max_gte_reps_min_and_more'),
+        (
+            "training",
+            "0003_plannedexercise_planned_exercise_reps_max_gte_reps_min_and_more",
+        ),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='trainingblock',
-            options={'ordering': ['-start_date', '-id']},
+            name="trainingblock",
+            options={"ordering": ["-start_date", "-id"]},
         ),
         migrations.AlterField(
-            model_name='exercise',
-            name='category',
-            field=models.CharField(choices=[('squat', 'Squat'), ('hinge', 'Hinge'), ('lunge', 'Lunge / single-leg'), ('horizontal_push', 'Horizontal push'), ('vertical_push', 'Vertical push'), ('horizontal_pull', 'Horizontal pull'), ('vertical_pull', 'Vertical pull'), ('carry', 'Carry'), ('core', 'Core'), ('isolation', 'Isolation'), ('conditioning', 'Conditioning / cardio'), ('mobility', 'Mobility')], max_length=20),
+            model_name="exercise",
+            name="category",
+            field=models.CharField(
+                choices=[
+                    ("squat", "Squat"),
+                    ("hinge", "Hinge"),
+                    ("lunge", "Lunge / single-leg"),
+                    ("horizontal_push", "Horizontal push"),
+                    ("vertical_push", "Vertical push"),
+                    ("horizontal_pull", "Horizontal pull"),
+                    ("vertical_pull", "Vertical pull"),
+                    ("carry", "Carry"),
+                    ("core", "Core"),
+                    ("isolation", "Isolation"),
+                    ("conditioning", "Conditioning / cardio"),
+                    ("mobility", "Mobility"),
+                ],
+                max_length=20,
+            ),
         ),
         migrations.AlterField(
-            model_name='profile',
-            name='goal',
-            field=models.CharField(choices=[('hypertrophy', 'Muscle building'), ('strength', 'Strength'), ('fat_loss', 'Fat loss'), ('recomposition', 'Body recomposition'), ('general_fitness', 'General fitness')], max_length=20),
+            model_name="profile",
+            name="goal",
+            field=models.CharField(
+                choices=[
+                    ("hypertrophy", "Muscle building"),
+                    ("strength", "Strength"),
+                    ("fat_loss", "Fat loss"),
+                    ("recomposition", "Body recomposition"),
+                    ("general_fitness", "General fitness"),
+                ],
+                max_length=20,
+            ),
         ),
         migrations.AddConstraint(
-            model_name='plannedexercise',
-            constraint=models.CheckConstraint(condition=models.Q(('weight__range', (0, 1000))), name='planned_exercise_weight_between_0_and_1000'),
+            model_name="plannedexercise",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("weight__range", (0, 1000))),
+                name="planned_exercise_weight_between_0_and_1000",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='plannedexercise',
-            constraint=models.CheckConstraint(condition=models.Q(('rir__lte', 10)), name='planned_exercise_rir_lte_10'),
+            model_name="plannedexercise",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("rir__lte", 10)), name="planned_exercise_rir_lte_10"
+            ),
         ),
     ]
