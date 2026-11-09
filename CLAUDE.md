@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Rules for working in this repo
+
+This is a portfolio project. The author writes models, migrations, business logic and tests herself, and uses Claude Code mainly for review and for boilerplate she explicitly delegates.
+
+- **Never create, edit, delete or apply migrations.** Do not run `makemigrations`, `migrate`, or any command that changes the database schema or its migration history, and do not touch files in `*/migrations/`. If a change needs a migration, say so and stop. (Reason: a migration that was applied to the local database and then removed from the repo left the database out of sync with the code, and the only clean fix was resetting the database.)
+- Do not edit models, tests or `conftest.py` unless the task explicitly asks for it. A review only reads code and reports findings; it does not change files.
+- Change only the files the task names. If something else needs changing, report it instead.
+- Do not run `git commit`, `git stash`, `git checkout` or `git restore`; the author commits herself after reviewing the diff.
+
 ## Project status
 
 Overcoach is an early-stage Django 6.1 project (Python 3.14) on PostgreSQL 18, which runs in Docker Compose. It will be a personal strength-training app: you plan training blocks, log workouts, and have an LLM propose the next block, which explicit rules in code must validate before it is accepted (see the roadmap in `README.md`). So far there is the custom user model, the admin, and the training models (`Exercise`, `Profile`, and the plan models `TrainingBlock` → `PlannedDay` → `PlannedExercise`). `config/urls.py` routes only `admin/`, and there are no views or service functions yet.
@@ -18,9 +27,9 @@ pip install -r requirements-dev.txt   # runtime deps (requirements.txt) + pytest
 docker compose up -d db               # start Postgres (needed for everything below, tests included)
 
 python manage.py runserver
-python manage.py makemigrations
-python manage.py migrate
 python manage.py check
+python manage.py loaddata exercises   # exercise library from training/fixtures/exercises.json
+# makemigrations / migrate: run by the author only (see "Rules for working in this repo")
 
 ruff format .                         # format (ruff defaults)
 
@@ -50,7 +59,9 @@ Email uses Django 6.1's `MAILERS` setting, not `EMAIL_BACKEND`, and currently pr
 `docs/decisions.md` records the design decisions and their reasons. Read it before changing models, and add an entry for new decisions in the same format.
 
 - `config/` is the project package (settings, root URLs, ASGI/WSGI).
-- `accounts/` holds only authentication. The custom `User` (`AUTH_USER_MODEL = 'accounts.User'`) extends `AbstractUser`, requires a unique `email`, and keeps `username` as the login field. Reference it through `settings.AUTH_USER_MODEL` or `get_user_model()`, never `django.contrib.auth.models.User`.
+- `accounts/` holds only authentication. The custom `User` (`AUTH_USER_MODEL = 'accounts.User'`) extends `AbstractUser`, requires an `email`, and keeps `username` as the login field. Reference it through `settings.AUTH_USER_MODEL` or `get_user_model()`, never `django.contrib.auth.models.User`.
+  - Email rules are enforced in the database through `Meta.constraints`: `user_email_ci_unique` (a `UniqueConstraint` on `Lower("email")`, so uniqueness ignores letter case) and `user_email_not_empty`. The field itself has no `unique=True`, because the case-insensitive constraint already covers exact duplicates. A duplicate shows up in model forms as a non-field error (`NON_FIELD_ERRORS`), because an expression-based constraint isn't tied to a single field.
+  - `accounts/admin.py` subclasses Django's `UserAdmin` and adds `email` to `add_fieldsets`, so users created in the admin always get an email. `accounts/tests/test_admin.py` covers the add form.
   - The required email is enforced by `EmailRequiredUserManager` (`accounts/managers.py`), which overrides `create_user` / `create_superuser` and raises `ValueError` for a missing or blank email. `User.objects.create()`, `save()` and raw SQL bypass this check, so create users through `create_user`.
 - `training/` holds the training domain and depends on `accounts`, never the other way round. That is why `Profile` lives here and not in `accounts`.
   - `Exercise` is a shared, curated library with a unique (case-sensitive) `name` and a movement-pattern `category`. Users do not create their own exercises.
