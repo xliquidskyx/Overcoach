@@ -129,8 +129,9 @@ def make_session(db, make_user):
         }
         data.update(kwargs)
         return WorkoutSession.objects.create(**data)
-    
+
     return _create_workout_session
+
 
 @pytest.fixture
 def make_set_log(db, make_session, make_exercise):
@@ -150,6 +151,7 @@ def make_set_log(db, make_session, make_exercise):
         return SetLog.objects.create(**data)
 
     return _create_set_log
+
 
 @pytest.fixture
 def make_measurement(db, make_user):

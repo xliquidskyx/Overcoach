@@ -2,7 +2,15 @@ import pytest
 
 from django.contrib.auth import get_user_model
 
-from training.models import Exercise, Measurement, Profile, SetLog, PlannedDay, PlannedExercise, WorkoutSession
+from training.models import (
+    Exercise,
+    Measurement,
+    Profile,
+    SetLog,
+    PlannedDay,
+    PlannedExercise,
+    WorkoutSession,
+)
 
 User = get_user_model()
 
@@ -50,6 +58,7 @@ def test_make_planned_exercise_create_distinct_objects(make_planned_exercise):
 
     assert first_planned_exercise.pk != second_planned_exercise.pk
     assert PlannedExercise.objects.count() == 2
+
 
 @pytest.mark.django_db
 def test_factories_create_valid_objects(make_session, make_set_log, make_measurement):
