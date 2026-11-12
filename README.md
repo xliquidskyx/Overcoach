@@ -2,7 +2,7 @@
 
 A personal strength-training app built with Django. The goal is to plan training blocks, log workouts from a phone, track progress and measurements, and use an LLM to propose the next training block from that data. Every proposal is checked against explicit rules in code before it is accepted.
 
-> **Status:** early development. So far the project has a custom user model, the Django admin, and the training models: an exercise library, user profiles, and training plans (blocks, planned days, and planned exercises). The plan's integrity rules are enforced as database constraints and covered by tests, and the admin can edit whole training plans (days and exercises inline). Workout logging is next.
+> **Status:** early development. So far the project has a custom user model, the Django admin, and the training models: an exercise library, user profiles, and training plans (blocks, planned days, and planned exercises), and the models for the workout log (sessions and logged sets) and body measurements. The integrity rules of the plan and of the log are enforced as database constraints and covered by tests, including what happens on delete. The admin can edit whole training plans (days and exercises inline) and logged workouts. Login, registration, and the mobile workout-logging views are next.
 
 ## Tech stack
 
@@ -53,7 +53,7 @@ pytest training                              # one app
 pytest training/tests/test_profile_functions.py::test_user_cannot_have_two_profiles  # one test
 ```
 
-Test data is created with factory fixtures from the root `conftest.py` (`make_user`, `make_profile`, `make_exercise`, `make_block`, `make_day`, `make_planned_exercise`). Each factory takes field overrides as keyword arguments and builds any missing parent objects itself, so `make_planned_exercise()` alone creates a whole valid plan chain.
+Test data is created with factory fixtures from the root `conftest.py` (`make_user`, `make_profile`, `make_exercise`, `make_block`, `make_day`, `make_planned_exercise`, `make_session`, `make_set_log`, `make_measurement`). Each factory takes field overrides as keyword arguments and builds any missing parent objects itself, so `make_planned_exercise()` alone creates a whole valid plan chain.
 
 Code is formatted with `ruff format .` (default settings).
 
@@ -85,7 +85,7 @@ Docker Compose reads the same `.env` file, so Django and the database container 
 ```
 config/     project settings, root URLs, ASGI/WSGI
 accounts/   custom User model (AbstractUser with a required email, unique regardless of letter case)
-training/   training domain: exercise library, user profiles, training plans (workout logs to come)
+training/   training domain: exercise library, user profiles, training plans, workout log, body measurements
 docs/       design decisions (decisions.md)
 ```
 
@@ -93,7 +93,7 @@ The custom user model is set from the start (`AUTH_USER_MODEL = "accounts.User"`
 
 A training plan is a chain of models: a `TrainingBlock` belongs to a user and has a start and end date, it contains `PlannedDay`s numbered by their position in the cycle, and each day contains `PlannedExercise`s that point to an exercise in the shared library. A planned exercise stores only the targets (sets, a reps range, optional weight, rest, optional RIR/RPE). Actual results will go into the workout log, and progression will be computed from them.
 
-The rules a plan must follow are enforced by PostgreSQL through `Meta.constraints`, not only by form validation, so they also hold for data from the shell, the admin, or a future LLM: a user can have only one active block, a block cannot end before it starts, positions are unique within a block or day, and planned values stay in sensible ranges (`reps_max >= reps_min`, at least one set and one rep, RPE 0–10, RIR up to 10, weight 0–1000 kg). The reasons behind these and other choices are recorded in [docs/decisions.md](docs/decisions.md).
+The rules a plan must follow are enforced by PostgreSQL through `Meta.constraints`, not only by form validation, so they also hold for data from the shell, the admin, or a future LLM: a user can have only one active block, a block cannot end before it starts, positions are unique within a block or day, and planned values stay in sensible ranges (`reps_max >= reps_min`, at least one set and one rep, RPE 0–10, RIR up to 10, weight 0–1000 kg). The workout log follows the same approach: set numbers are unique per session and exercise, a session cannot finish before it starts, logged values use the same ranges as the plan, and a measurement must record at least one value, at most once per user per day. Deleting an old block keeps its sessions (they only lose the link to the plan), deleting a user deletes all of their data, and an exercise that appears in a logged set cannot be deleted. The reasons behind these and other choices are recorded in [docs/decisions.md](docs/decisions.md).
 
 ## Roadmap
 

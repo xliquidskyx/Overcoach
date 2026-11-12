@@ -36,8 +36,8 @@ def test_create_superuser(make_user):
     assert user.password != "strongpassword"  # Checks if pwd has been hashed
     assert user.check_password("strongpassword")
     assert user.email == "laura@example.com"
-    assert user.is_staff == True
-    assert user.is_superuser == True
+    assert user.is_staff
+    assert user.is_superuser
 
 
 @pytest.mark.django_db

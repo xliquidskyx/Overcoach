@@ -124,11 +124,7 @@ def make_session(db, make_user):
     def _create_workout_session(**kwargs):
         if "user" not in kwargs:
             kwargs["user"] = make_user()
-        data = {
-            "started_at": timezone.localdate(),
-        }
-        data.update(kwargs)
-        return WorkoutSession.objects.create(**data)
+        return WorkoutSession.objects.create(**kwargs)
 
     return _create_workout_session
 
