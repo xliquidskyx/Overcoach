@@ -7,93 +7,265 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('training', '0004_alter_trainingblock_options_alter_exercise_category_and_more'),
+        (
+            "training",
+            "0004_alter_trainingblock_options_alter_exercise_category_and_more",
+        ),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='profile',
-            name='height_cm',
+            model_name="profile",
+            name="height_cm",
             field=models.PositiveSmallIntegerField(blank=True, null=True),
         ),
         migrations.CreateModel(
-            name='WorkoutSession',
+            name="WorkoutSession",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('started_at', models.DateTimeField(default=django.utils.timezone.now)),
-                ('finished_at', models.DateTimeField(blank=True, null=True)),
-                ('notes', models.TextField(blank=True)),
-                ('planned_day', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='sessions', to='training.plannedday')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='workout_sessions', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("started_at", models.DateTimeField(default=django.utils.timezone.now)),
+                ("finished_at", models.DateTimeField(blank=True, null=True)),
+                ("notes", models.TextField(blank=True)),
+                (
+                    "planned_day",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="sessions",
+                        to="training.plannedday",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="workout_sessions",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-started_at', '-id'],
+                "ordering": ["-started_at", "-id"],
             },
         ),
         migrations.CreateModel(
-            name='SetLog',
+            name="SetLog",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('set_number', models.PositiveSmallIntegerField()),
-                ('reps', models.PositiveSmallIntegerField()),
-                ('weight', models.DecimalField(decimal_places=2, max_digits=6)),
-                ('rir', models.PositiveSmallIntegerField(blank=True, null=True)),
-                ('exercise', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='set_logs', to='training.exercise')),
-                ('planned_exercise', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='set_logs', to='training.plannedexercise')),
-                ('session', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='sets', to='training.workoutsession')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("set_number", models.PositiveSmallIntegerField()),
+                ("reps", models.PositiveSmallIntegerField()),
+                ("weight", models.DecimalField(decimal_places=2, max_digits=6)),
+                ("rir", models.PositiveSmallIntegerField(blank=True, null=True)),
+                (
+                    "exercise",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="set_logs",
+                        to="training.exercise",
+                    ),
+                ),
+                (
+                    "planned_exercise",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="set_logs",
+                        to="training.plannedexercise",
+                    ),
+                ),
+                (
+                    "session",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="sets",
+                        to="training.workoutsession",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['id'],
+                "ordering": ["id"],
             },
         ),
         migrations.CreateModel(
-            name='Measurement',
+            name="Measurement",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('date', models.DateField(default=django.utils.timezone.localdate)),
-                ('body_weight', models.DecimalField(blank=True, decimal_places=2, max_digits=5, null=True)),
-                ('body_fat_percent', models.DecimalField(blank=True, decimal_places=1, max_digits=4, null=True)),
-                ('muscle_mass', models.DecimalField(blank=True, decimal_places=2, max_digits=5, null=True)),
-                ('calf', models.DecimalField(blank=True, decimal_places=1, max_digits=4, null=True)),
-                ('thigh', models.DecimalField(blank=True, decimal_places=1, max_digits=4, null=True)),
-                ('hips', models.DecimalField(blank=True, decimal_places=1, max_digits=4, null=True)),
-                ('belly', models.DecimalField(blank=True, decimal_places=1, max_digits=4, null=True)),
-                ('waist', models.DecimalField(blank=True, decimal_places=1, max_digits=4, null=True)),
-                ('under_bust', models.DecimalField(blank=True, decimal_places=1, max_digits=4, null=True)),
-                ('chest', models.DecimalField(blank=True, decimal_places=1, max_digits=4, null=True)),
-                ('arm', models.DecimalField(blank=True, decimal_places=1, max_digits=4, null=True)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='measurements', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("date", models.DateField(default=django.utils.timezone.localdate)),
+                (
+                    "body_weight",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=5, null=True
+                    ),
+                ),
+                (
+                    "body_fat_percent",
+                    models.DecimalField(
+                        blank=True, decimal_places=1, max_digits=4, null=True
+                    ),
+                ),
+                (
+                    "muscle_mass",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=5, null=True
+                    ),
+                ),
+                (
+                    "calf",
+                    models.DecimalField(
+                        blank=True, decimal_places=1, max_digits=4, null=True
+                    ),
+                ),
+                (
+                    "thigh",
+                    models.DecimalField(
+                        blank=True, decimal_places=1, max_digits=4, null=True
+                    ),
+                ),
+                (
+                    "hips",
+                    models.DecimalField(
+                        blank=True, decimal_places=1, max_digits=4, null=True
+                    ),
+                ),
+                (
+                    "belly",
+                    models.DecimalField(
+                        blank=True, decimal_places=1, max_digits=4, null=True
+                    ),
+                ),
+                (
+                    "waist",
+                    models.DecimalField(
+                        blank=True, decimal_places=1, max_digits=4, null=True
+                    ),
+                ),
+                (
+                    "under_bust",
+                    models.DecimalField(
+                        blank=True, decimal_places=1, max_digits=4, null=True
+                    ),
+                ),
+                (
+                    "chest",
+                    models.DecimalField(
+                        blank=True, decimal_places=1, max_digits=4, null=True
+                    ),
+                ),
+                (
+                    "arm",
+                    models.DecimalField(
+                        blank=True, decimal_places=1, max_digits=4, null=True
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="measurements",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-date', '-id'],
-                'constraints': [models.UniqueConstraint(fields=('user', 'date'), name='measurement_one_per_user_per_day'), models.CheckConstraint(condition=models.Q(('body_fat_percent__range', (0, 100))), name='measurement_body_fat_percent_between_0_and_100'), models.CheckConstraint(condition=models.Q(('muscle_mass__gte', 0)), name='measurement_muscle_mass_gte_0'), models.CheckConstraint(condition=models.Q(('body_weight__isnull', False), ('body_fat_percent__isnull', False), ('muscle_mass__isnull', False), ('calf__isnull', False), ('thigh__isnull', False), ('hips__isnull', False), ('belly__isnull', False), ('waist__isnull', False), ('under_bust__isnull', False), ('chest__isnull', False), ('arm__isnull', False), _connector='OR'), name='measurement_at_least_one_field_not_null')],
+                "ordering": ["-date", "-id"],
+                "constraints": [
+                    models.UniqueConstraint(
+                        fields=("user", "date"), name="measurement_one_per_user_per_day"
+                    ),
+                    models.CheckConstraint(
+                        condition=models.Q(("body_fat_percent__range", (0, 100))),
+                        name="measurement_body_fat_percent_between_0_and_100",
+                    ),
+                    models.CheckConstraint(
+                        condition=models.Q(("muscle_mass__gte", 0)),
+                        name="measurement_muscle_mass_gte_0",
+                    ),
+                    models.CheckConstraint(
+                        condition=models.Q(
+                            ("body_weight__isnull", False),
+                            ("body_fat_percent__isnull", False),
+                            ("muscle_mass__isnull", False),
+                            ("calf__isnull", False),
+                            ("thigh__isnull", False),
+                            ("hips__isnull", False),
+                            ("belly__isnull", False),
+                            ("waist__isnull", False),
+                            ("under_bust__isnull", False),
+                            ("chest__isnull", False),
+                            ("arm__isnull", False),
+                            _connector="OR",
+                        ),
+                        name="measurement_at_least_one_field_not_null",
+                    ),
+                ],
             },
         ),
         migrations.AddConstraint(
-            model_name='workoutsession',
-            constraint=models.CheckConstraint(condition=models.Q(('finished_at__gte', models.F('started_at'))), name='workout_session_finished_at_after_started_at'),
+            model_name="workoutsession",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("finished_at__gte", models.F("started_at"))),
+                name="workout_session_finished_at_after_started_at",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='setlog',
-            constraint=models.UniqueConstraint(fields=('session', 'exercise', 'set_number'), name='set_log_set_number_unique_per_session_exercise'),
+            model_name="setlog",
+            constraint=models.UniqueConstraint(
+                fields=("session", "exercise", "set_number"),
+                name="set_log_set_number_unique_per_session_exercise",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='setlog',
-            constraint=models.CheckConstraint(condition=models.Q(('set_number__gt', 0)), name='set_log_set_number_gt_0'),
+            model_name="setlog",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("set_number__gt", 0)),
+                name="set_log_set_number_gt_0",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='setlog',
-            constraint=models.CheckConstraint(condition=models.Q(('reps__gt', 0)), name='set_log_reps_gt_0'),
+            model_name="setlog",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("reps__gt", 0)), name="set_log_reps_gt_0"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='setlog',
-            constraint=models.CheckConstraint(condition=models.Q(('weight__range', (0, 1000))), name='set_log_weight_between_0_and_1000'),
+            model_name="setlog",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("weight__range", (0, 1000))),
+                name="set_log_weight_between_0_and_1000",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='setlog',
-            constraint=models.CheckConstraint(condition=models.Q(('rir__lte', 10)), name='set_log_rir_lte_10'),
+            model_name="setlog",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("rir__lte", 10)), name="set_log_rir_lte_10"
+            ),
         ),
     ]

@@ -3,12 +3,16 @@ from decimal import Decimal
 import itertools
 import pytest
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from training.models import (
     Exercise,
     Profile,
     TrainingBlock,
+    Measurement,
     PlannedDay,
     PlannedExercise,
+    SetLog,
+    WorkoutSession,
 )
 
 _counter = itertools.count(1)
@@ -113,3 +117,50 @@ def make_planned_exercise(db, make_day, make_exercise):
         return PlannedExercise.objects.create(**data)
 
     return _create_planned_exercise
+
+
+@pytest.fixture
+def make_session(db, make_user):
+    def _create_workout_session(**kwargs):
+        if "user" not in kwargs:
+            kwargs["user"] = make_user()
+        data = {
+            "started_at": timezone.localdate(),
+        }
+        data.update(kwargs)
+        return WorkoutSession.objects.create(**data)
+    
+    return _create_workout_session
+
+@pytest.fixture
+def make_set_log(db, make_session, make_exercise):
+    def _create_set_log(**kwargs):
+        n = next(_counter)
+        if "session" not in kwargs:
+            kwargs["session"] = make_session()
+        if "exercise" not in kwargs:
+            kwargs["exercise"] = make_exercise()
+        data = {
+            "set_number": n,
+            "reps": 10,
+            "weight": Decimal("50.0"),
+            "rir": 2,
+        }
+        data.update(kwargs)
+        return SetLog.objects.create(**data)
+
+    return _create_set_log
+
+@pytest.fixture
+def make_measurement(db, make_user):
+    def _create_measurement(**kwargs):
+        if "user" not in kwargs:
+            kwargs["user"] = make_user()
+        data = {
+            "date": timezone.localdate(),
+            "body_weight": Decimal("65.0"),
+        }
+        data.update(kwargs)
+        return Measurement.objects.create(**data)
+
+    return _create_measurement
