@@ -1,0 +1,234 @@
+/* Overcoach – base styles. Mobile-first, no frameworks, no external fonts. */
+
+:root {
+  --color-text: #1a1a1a;
+  --color-muted: #5a5a5a;
+  --color-bg: #ffffff;
+  --color-surface: #f4f4f5;
+  --color-border: #c8c8cc;
+  --color-primary: #1f5fbf;
+  --color-primary-hover: #174a96;
+  --color-focus: #f0a400;
+
+  --color-error-text: #8a1c1c;
+  --color-error-bg: #fdecec;
+  --color-error-border: #e3a5a5;
+  --color-success-text: #1d5c2e;
+  --color-success-bg: #e8f5ec;
+  --color-success-border: #a6d4b3;
+  --color-warning-text: #6b4a00;
+  --color-warning-bg: #fff6dd;
+  --color-warning-border: #e6cc80;
+  --color-info-text: #1d3f6e;
+  --color-info-bg: #e8f0fb;
+  --color-info-border: #a9c3e8;
+
+  --radius: 6px;
+  --gap: 1rem;
+  --control-height: 44px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+/* Single centered column */
+.nav,
+.content {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 var(--gap);
+}
+
+.content {
+  padding-top: var(--gap);
+  padding-bottom: 2rem;
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin: 0 0 var(--gap);
+}
+
+a {
+  color: var(--color-primary);
+}
+
+/* Header / navigation */
+.site-header {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem var(--gap);
+  min-height: 56px;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.nav-brand {
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.nav-user {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem var(--gap);
+  min-width: 0;
+}
+
+.nav-user a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height);
+}
+
+.nav-email {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.nav-logout {
+  margin: 0;
+}
+
+/* Forms */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+/* Django renders each field of {{ form }} in its own <div> */
+.form > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+label {
+  font-weight: 600;
+}
+
+input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  font-size: 16px; /* below 16px iOS Safari zooms in on focus */
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+button {
+  min-height: var(--control-height);
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  background: var(--color-primary);
+  border: 0;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--color-primary-hover);
+}
+
+/* Full-width controls in page content; the logout button in the header stays compact */
+.content button {
+  width: 100%;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.helptext {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+/* Form errors: Django renders them as <ul class="errorlist"> (non-field ones also get .nonfield) */
+.errorlist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-error-text);
+  font-size: 0.9375rem;
+}
+
+.errorlist.nonfield {
+  padding: 0.75rem 1rem;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: var(--radius);
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--color-error-text);
+}
+
+/* django.contrib.messages; class = message.tags (debug, info, success, warning, error) */
+.messages {
+  margin: 0 0 var(--gap);
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.message {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-info-border);
+  border-radius: var(--radius);
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
+}
+
+.message.success {
+  background: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  color: var(--color-success-text);
+}
+
+.message.warning {
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning-border);
+  color: var(--color-warning-text);
+}
+
+.message.error {
+  background: var(--color-error-bg);
+  border-color: var(--color-error-border);
+  color: var(--color-error-text);
+}

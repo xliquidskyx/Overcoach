@@ -1,0 +1,40 @@
+{% load static %}<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Overcoach{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav">
+      <a class="nav-brand" href="{% url 'training:home' %}">Overcoach</a>
+      <div class="nav-user">
+        {% if user.is_authenticated %}
+          <span class="nav-email">{{ user.email }}</span>
+          <form class="nav-logout" method="post" action="{% url 'accounts:logout' %}">
+            {% csrf_token %}
+            <button type="submit">Wyloguj</button>
+          </form>
+        {% else %}
+          <a href="{% url 'accounts:login' %}">Zaloguj</a>
+          {# <a href="{% url 'accounts:register' %}">Zarejestruj</a> #}
+        {% endif %}
+      </div>
+    </nav>
+  </header>
+
+  <main class="content">
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}
+          <li class="message {{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
