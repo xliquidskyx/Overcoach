@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}Logowanie{% endblock %}
+{% block title %}Log in{% endblock %}
 
 {% block content %}
-  <h1>Logowanie</h1>
+  <h1>Log in</h1>
 
   <form class="form" method="post">
     {% csrf_token %}
     {# {{ form }} renders non_field_errors itself, at the top, as <ul class="errorlist nonfield">. #}
     {{ form }}
     <input type="hidden" name="next" value="{{ next }}">
-    <button type="submit">Zaloguj</button>
+    <button type="submit">Log in</button>
   </form>
 {% endblock %}
