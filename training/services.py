@@ -18,3 +18,7 @@ def create_profile(
     profile.excluded_exercises.set(excluded_exercises)
 
     return profile
+
+
+def has_profile(user):
+    return Profile.objects.filter(user=user).exists()
