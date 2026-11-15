@@ -4,16 +4,22 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('training', '0005_profile_height_cm_workoutsession_setlog_measurement_and_more'),
+        (
+            "training",
+            "0005_profile_height_cm_workoutsession_setlog_measurement_and_more",
+        ),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='profile',
-            name='sex',
-            field=models.CharField(choices=[('Female', 'woman'), ('Male', 'man')], default='female', max_length=6),
+            model_name="profile",
+            name="sex",
+            field=models.CharField(
+                choices=[("Female", "woman"), ("Male", "man")],
+                default="female",
+                max_length=6,
+            ),
             preserve_default=False,
         ),
     ]

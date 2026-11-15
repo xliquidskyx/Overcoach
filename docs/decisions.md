@@ -372,3 +372,23 @@ Every constraint from entries 28 and 29 has a test in `training/tests/test_sessi
 - `Model.delete()` sets the deleted instance's `pk` to `None`, so `filter(pk=obj.pk)` after deleting `obj` becomes `filter(pk=None)` and is always empty. The primary key is saved in a variable before the delete. Objects removed by the cascade keep their `pk`, because Django deletes its own copies of them.
 
 `ProtectedError` needs no `transaction.atomic()`: Django raises it while collecting related objects, before any SQL is sent, so the transaction stays usable. An `IntegrityError` comes from PostgreSQL and leaves the transaction broken.
+
+## 33. Excluded exercises will be suggested by the AI, not chosen during onboarding
+
+**Date:** 2026-11-15
+
+**Decision:** The onboarding form does not ask for excluded exercises. Its fields are `sex`, `date_of_birth`, `goal`, `level` and `height_cm`. `Profile.excluded_exercises` stays in the model (it is `blank=True`, so an empty list is valid) and is filled in later by the AI feature: the user describes their goal and their injuries or limitations in their own words, the LLM proposes which exercises to exclude, the app shows the proposal, and the user either accepts it or removes exercises from the list in their settings. Until then, exclusions can be set by hand in the admin.
+
+`create_profile` (`training/services.py`) already supports both flows: `excluded_exercises` defaults to an empty tuple, so onboarding calls it without exclusions, and the AI flow will pass the accepted list through the same function. It defaults to `()` rather than `[]` or `set()`, because a default argument is created once and a mutable one would be shared between calls.
+
+**Why:** A new user does not know which exercises to avoid with, for example, a shoulder injury, but they can describe the injury. Asking them to pick from the exercise library would give worse data than letting the model propose exclusions and letting the user confirm them. This also follows the rule for the whole app: the LLM proposes, code validates, and the user accepts.
+
+**Deferred:** There is no field for the user's description of injuries or limitations yet. It will be added together with the AI feature (for example `Profile.limitations = TextField(blank=True)`). With one user, asking existing users to fill it in later costs nothing, and adding it now would be a migration for data nothing reads yet.
+
+**Before the AI feature is enabled:**
+
+- Injuries are health data, a special category under GDPR (Article 9). Sending them to an LLM provider needs the user's explicit consent, and only the data the request needs should be sent.
+- The model's proposal must be validated in code: every proposed exercise must exist in the `Exercise` library, and anything else is rejected rather than guessed.
+- If the settings page needs to show where an exclusion came from (AI or the user) and why (for example "shoulder"), a plain M2M cannot store that. That would mean switching `excluded_exercises` to a `through` model, which is possible later with a migration.
+
+**Alternative considered:** A multi-select of exercises in the onboarding form. Rejected for the reason above, and because a long list of exercises makes onboarding on a phone slow.

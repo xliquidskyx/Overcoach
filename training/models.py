@@ -41,8 +41,8 @@ class Profile(models.Model):
         ADVANCED = 3, "Advanced"
 
     class Sex(models.TextChoices):
-        FEMALE = "Female", "woman"
-        MALE = "Male", "man"
+        FEMALE = "female", "woman"
+        MALE = "male", "man"
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     sex = models.CharField(choices=Sex, max_length=6)
