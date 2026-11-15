@@ -40,7 +40,12 @@ class Profile(models.Model):
         INTERMEDIATE = 2, "Intermediate"
         ADVANCED = 3, "Advanced"
 
+    class Sex(models.TextChoices):
+        FEMALE = "Female", "woman"
+        MALE = "Male", "man"
+
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    sex = models.CharField(choices=Sex, max_length=6)
     date_of_birth = models.DateField()
     goal = models.CharField(choices=Goal, max_length=20)
     level = models.PositiveSmallIntegerField(choices=Level)

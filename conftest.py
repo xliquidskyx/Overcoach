@@ -40,6 +40,7 @@ def make_profile(db, make_user):
         if "user" not in kwargs:
             kwargs["user"] = make_user()
         data = {
+            "sex": Profile.Sex.FEMALE,
             "date_of_birth": datetime.date(2002, 5, 4),
             "goal": Profile.Goal.HYPERTROPHY,
             "level": Profile.Level.ADVANCED,
