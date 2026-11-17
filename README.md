@@ -2,7 +2,7 @@
 
 A personal strength-training app built with Django. The goal is to plan training blocks, log workouts from a phone, track progress and measurements, and use an LLM to propose the next training block from that data. Every proposal is checked against explicit rules in code before it is accepted.
 
-> **Status:** early development. So far the project has a custom user model, the Django admin, and the training models: an exercise library, user profiles, and training plans (blocks, planned days, and planned exercises), and the models for the workout log (sessions and logged sets) and body measurements. The integrity rules of the plan and of the log are enforced as database constraints and covered by tests, including what happens on delete. The admin can edit whole training plans (days and exercises inline) and logged workouts. Login, registration, and the mobile workout-logging views are next.
+> **Status:** early development. So far the project has a custom user model, the Django admin, and the training models: an exercise library, user profiles, and training plans (blocks, planned days, and planned exercises), and the models for the workout log (sessions and logged sets) and body measurements. The integrity rules of the plan and of the log are enforced as database constraints and covered by tests, including what happens on delete. The admin can edit whole training plans (days and exercises inline) and logged workouts. Users can register, log in and out, and set up their training profile in an onboarding step after registration. The mobile workout-logging views are next.
 
 ## Tech stack
 
@@ -39,7 +39,7 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
-The admin panel is at http://127.0.0.1:8000/admin/. A training block is edited on its own page with its days inline; each day links to a page where its exercises are edited inline, with exercise search. Django has no nested inlines, so a plan is edited on these two levels.
+The app starts at http://127.0.0.1:8000/accounts/register/ (or `/accounts/login/`); after registering, a new user is taken to the profile onboarding step. The admin panel is at http://127.0.0.1:8000/admin/. A training block is edited on its own page with its days inline; each day links to a page where its exercises are edited inline, with exercise search. Django has no nested inlines, so a plan is edited on these two levels.
 
 `loaddata exercises` loads the exercise library from `training/fixtures/exercises.json`. Every entry has a fixed primary key, so running the command again updates the same rows instead of adding duplicates.
 
@@ -84,8 +84,10 @@ Docker Compose reads the same `.env` file, so Django and the database container 
 
 ```
 config/     project settings, root URLs, ASGI/WSGI
-accounts/   custom User model (AbstractUser with a required email, unique regardless of letter case)
-training/   training domain: exercise library, user profiles, training plans, workout log, body measurements
+accounts/   custom User model (AbstractUser with a required email, unique regardless of letter case), login, logout and registration
+training/   training domain: exercise library, user profiles and onboarding, training plans, workout log, body measurements
+templates/  project templates (base.html, registration/, training/)
+static/     CSS
 docs/       design decisions (decisions.md)
 ```
 
@@ -104,6 +106,7 @@ The rules a plan must follow are enforced by PostgreSQL through `Meta.constraint
 - [x] Training models: training blocks, planned days and exercises
 - [x] Database constraints and model tests with factory fixtures
 - [x] Admin for training plans (inline days and exercises)
+- [x] Login, registration and profile onboarding
 - [ ] Workout logging and measurements, mobile-friendly views
 - [ ] REST API with authentication
 - [ ] LLM-generated training blocks with rule validation and evals

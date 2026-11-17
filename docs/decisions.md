@@ -392,3 +392,65 @@ Every constraint from entries 28 and 29 has a test in `training/tests/test_sessi
 - If the settings page needs to show where an exclusion came from (AI or the user) and why (for example "shoulder"), a plain M2M cannot store that. That would mean switching `excluded_exercises` to a `through` model, which is possible later with a migration.
 
 **Alternative considered:** A multi-select of exercises in the onboarding form. Rejected for the reason above, and because a long list of exercises makes onboarding on a phone slow.
+
+## 34. Login and logout use Django's built-in views on two explicit paths
+
+**Date:** 2026-11-13
+
+**Decision:** `accounts/urls.py` routes only `login/` (`LoginView` with `redirect_authenticated_user=True`) and `logout/` (`LogoutView`), under the `accounts` namespace. Every URL in the project is reversed by its namespaced name (`accounts:login`, `training:home`), and the `LOGIN_URL`, `LOGIN_REDIRECT_URL` and `LOGOUT_REDIRECT_URL` settings use these names too, not hard-coded paths, so changing a prefix cannot silently break them. Logout is a POST form with `{% csrf_token %}` in `base.html`, because `LogoutView` accepts only POST; a GET returns 405 and keeps the user logged in.
+
+**Why:** `include("django.contrib.auth.urls")` would also publish password change and password reset. Password reset sends email, which is not configured yet (see `DEPLOY.md`), and its pages would fall back to the admin's templates. Only what works and is tested is exposed; password reset will be added together with a real email backend.
+
+`redirect_authenticated_user=True` sends a logged-in user who opens the login page (for example from a bookmark on a phone) straight to the home page. `LoginView` follows `?next=` only to URLs on the same host (`url_has_allowed_host_and_scheme`), so a link like `?next=https://evil.com/` cannot be used as an open redirect; a test pins this.
+
+**Open question:** Users log in with `username`, although the email is required and unique regardless of letter case. Logging in with the email may suit a phone app better and would need a custom authentication backend.
+
+## 35. Registration creates only the user; the profile is created in onboarding
+
+**Date:** 2026-11-14
+
+**Decision:** The `register` view in `accounts` uses `RegisterForm` (a `UserCreationForm` subclass with `username` and `email`), logs the new user in with `login()` and redirects to `training:home`. It does not create a `Profile`. `home` sends every user without a profile to `training:onboarding`, so a new user lands there automatically.
+
+`RegisterForm.clean_email` strips the address and rejects duplicates with `email__iexact`. The `user_email_ci_unique` constraint would reject them anyway, but because it is an expression constraint, a model form reports it as a non-field error above the form. `clean_email` attaches the error to the email field; the constraint stays as the last line of defence.
+
+**Why:** `accounts` must not depend on `training` (that is why `Profile` lives in `training`), and a profile needs real data, because `goal`, `level` and `sex` have no defaults on purpose. Creating it at registration would mean either importing from `training` or saving invented values. Redirecting by URL name is only a string, so `accounts` still imports nothing from `training`.
+
+**Note:** `UserCreationForm.save()` does not call `EmailRequiredUserManager.create_user()`; it sets the password and calls `save()`. On this path, a missing email is stopped by the required form field and the `user_email_not_empty` constraint, not by the manager.
+
+## 36. Profile.sex
+
+**Date:** 2026-11-15
+
+**Decision:** `Profile.sex` is a required `CharField` with `TextChoices` (`female`, `male`), `max_length=6`, and no default, like `goal` and `level`. It is stable data used to fit training plans, so it belongs on `Profile`, next to `date_of_birth`. Decision 29 still holds: measurement fields do not depend on sex.
+
+**Migrations:** `0006` added the field. Profiles already existed in the local database, so `makemigrations` asked for a one-off default (`"female"`, `preserve_default=False`): it filled the existing rows only, and the model has no default. With real users this would not be acceptable, because their sex cannot be guessed; the field would have to be nullable first and filled in through onboarding.
+
+**Mistake and fix:** The first version had value and label swapped (`FEMALE = "Female", "woman"`). The value is what is stored and sent by forms, so the rows filled with `"female"` by `0006` were outside the allowed choices, and forms rejected `"female"`. The values were changed to lowercase (`"female"`, `"male"`), which made the existing rows valid again without a data migration; `0007` only records the new `choices`. `0006` was not edited, because it had already been committed and applied. A form test (`test_sex_not_in_choices_rejected`) rejects `"Female"` and `"Male"`, so the swap cannot come back unnoticed.
+
+## 37. Onboarding creates the profile through a service function
+
+**Date:** 2026-11-15
+
+**Decision:** The `onboarding` view (`@login_required`) validates `ProfileForm` and calls `create_profile(request.user, **form.cleaned_data)` from `training/services.py`, not `form.save()`. The form's field names match the service's keyword arguments, which is what makes `**form.cleaned_data` work. A user who already has a profile is redirected to `home` on both GET and POST, so a second POST cannot reach `create_profile` and fail with an `IntegrityError` from the one-to-one field.
+
+`create_profile` takes keyword-only arguments, creates the profile and then sets `excluded_exercises`, inside `@transaction.atomic`: the M2M rows are written by a separate query after the profile exists, and a failure there must not leave a profile behind. `has_profile(user)` (`Profile.objects.filter(user=user).exists()`) is the single check used by `home` and `onboarding`.
+
+`ProfileForm` validates the age (16 to 110, computed from `timezone.localdate()` with the birthday taken into account) and the height (50 to 280 cm, empty allowed) in `clean_date_of_birth` and `clean_height_cm`. The limits are module constants, also used by the widgets and the tests. These checks live in the form only; the database has no constraints for them.
+
+**Why a service:** A profile will be created from more than one place (onboarding now; the AI flow from decision 33, maybe the admin or a management command later). With one function, the way a profile is created, including the transaction and the exclusions, is written once. The view only translates HTTP into a call. `exists()` was chosen over `hasattr(user, "profile")` because it states what it checks; `hasattr` works only because Django's `RelatedObjectDoesNotExist` subclasses `AttributeError`, and no view reads `user.profile` afterwards, so its caching gives nothing.
+
+## 38. How authentication and onboarding are tested
+
+**Date:** 2026-11-17
+
+**Decision:** Five test files cover this part:
+
+- `training/tests/test_profile_form.py`: the form alone, without HTTP. An autouse fixture replaces `timezone.localdate` with a fixed date through `monkeypatch`, so the age limits are tested on exact dates (the birthday today passes, tomorrow fails) and the tests do not depend on the day they run.
+- `training/tests/test_profile_services.py`: `create_profile` and `has_profile` called directly. Saved values are read back from the database. The exclusions test creates three exercises and passes two, so it fails if the service excludes everything. Rollback is tested by passing a generator that raises when `.set()` reads it: the profile has been created by then, and the test checks that it is gone. The service's `atomic` becomes a savepoint inside the test's transaction, so the database can still be queried after the error.
+- `accounts/tests/test_register.py`: the registration view through the test client, including duplicate emails in different letter case (error on the email field, no new user, nobody logged in).
+- `accounts/tests/test_auth_views.py`: the login and logout configuration: redirects from the settings, `?next=` to the same site and to another site, `redirect_authenticated_user`, and logout by POST (logs out) and GET (405, still logged in).
+- `training/tests/test_onboarding_views.py`: who is sent where by `home` and `onboarding`, the form's fields (no `excluded_exercises`), and a POST from a user who already has a profile, which must redirect and leave the existing data unchanged.
+
+`assertRedirects` uses `fetch_redirect_response=False` when the target redirects again (for example `home` for a user without a profile), because by default it requires the target to return 200. Files in `accounts` import nothing from `training`.
+
+**Why:** Redirects and duplicate checks are the easiest things to break silently when views change, and age limits are only correct if they are tested on the exact boundary dates. As in decision 32, each test was checked by breaking the code on purpose and seeing it fail.
