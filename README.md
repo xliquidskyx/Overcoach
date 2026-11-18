@@ -53,7 +53,7 @@ pytest training                              # one app
 pytest training/tests/test_profile_functions.py::test_user_cannot_have_two_profiles  # one test
 ```
 
-Test data is created with factory fixtures from the root `conftest.py` (`make_user`, `make_profile`, `make_exercise`, `make_block`, `make_day`, `make_planned_exercise`, `make_session`, `make_set_log`, `make_measurement`). Each factory takes field overrides as keyword arguments and builds any missing parent objects itself, so `make_planned_exercise()` alone creates a whole valid plan chain.
+Test data is created with factory fixtures from the root `conftest.py` (`make_user`, `make_profile`, `make_exercise`, `make_block`, `make_day`, `make_planned_exercise`, `make_session`, `make_set_log`, `make_measurement`). Each factory takes field overrides as keyword arguments and builds any missing parent objects itself, so `make_planned_exercise()` alone creates a whole valid plan chain. Two more fixtures serve the tests of `next_planned_day`: `cycle` (a user with an active block of three days) and `finished_session` (a finished workout a given number of days ago).
 
 Code is formatted with `ruff format .` (default settings).
 

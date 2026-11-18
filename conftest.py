@@ -1,4 +1,4 @@
-import datetime
+from datetime import date, timedelta
 from decimal import Decimal
 import itertools
 import pytest
@@ -41,7 +41,7 @@ def make_profile(db, make_user):
             kwargs["user"] = make_user()
         data = {
             "sex": Profile.Sex.FEMALE,
-            "date_of_birth": datetime.date(2002, 5, 4),
+            "date_of_birth": date(2002, 5, 4),
             "goal": Profile.Goal.HYPERTROPHY,
             "level": Profile.Level.ADVANCED,
         }
@@ -72,8 +72,8 @@ def make_block(db, make_user):
             kwargs["user"] = make_user()
         data = {
             "name": "Winter Recomposition",
-            "start_date": datetime.date(2026, 11, 1),
-            "end_date": datetime.date(2027, 3, 1),
+            "start_date": date(2026, 11, 1),
+            "end_date": date(2027, 3, 1),
             "is_active": False,
         }
         data.update(kwargs)
@@ -163,3 +163,37 @@ def make_measurement(db, make_user):
         return Measurement.objects.create(**data)
 
     return _create_measurement
+
+
+@pytest.fixture
+def cycle(db, make_user, make_block, make_day):
+    user = make_user()
+    training_block = make_block(user=user, is_active=True)
+    day1 = make_day(training_block=training_block, position=1)
+    day2 = make_day(training_block=training_block, position=2)
+    day3 = make_day(training_block=training_block, position=3)
+
+    return {
+        "user": user,
+        "training_block": training_block,
+        "day1": day1,
+        "day2": day2,
+        "day3": day3,
+    }
+
+
+@pytest.fixture
+def finished_session(make_session):
+    def _create_finished_session(*, user, planned_day, days_ago):
+        now = timezone.now()
+        started_at = now - timedelta(days=days_ago)
+        finished_at = started_at + timedelta(hours=1)
+
+        return make_session(
+            user=user,
+            planned_day=planned_day,
+            started_at=started_at,
+            finished_at=finished_at,
+        )
+
+    return _create_finished_session

@@ -1,5 +1,5 @@
 from django.db import transaction
-from .models import Profile
+from .models import Profile, TrainingBlock, WorkoutSession
 
 
 @transaction.atomic
@@ -22,3 +22,33 @@ def create_profile(
 
 def has_profile(user):
     return Profile.objects.filter(user=user).exists()
+
+
+def next_planned_day(user):
+    active_block = TrainingBlock.objects.filter(user=user, is_active=True).first()
+    if active_block is None:
+        return None
+
+    first_day = active_block.days.first()
+    last_session = (
+        WorkoutSession.objects.filter(
+            user=user, planned_day__training_block=active_block
+        )
+        .select_related("planned_day")
+        .first()
+    )
+
+    if last_session is None:
+        return first_day
+
+    if last_session.finished_at is None:
+        return last_session.planned_day
+
+    next_day = active_block.days.filter(
+        position__gt=last_session.planned_day.position
+    ).first()
+
+    if next_day is None:
+        return first_day
+
+    return next_day

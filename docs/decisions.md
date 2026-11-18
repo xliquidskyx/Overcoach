@@ -454,3 +454,31 @@ Every constraint from entries 28 and 29 has a test in `training/tests/test_sessi
 `assertRedirects` uses `fetch_redirect_response=False` when the target redirects again (for example `home` for a user without a profile), because by default it requires the target to return 200. Files in `accounts` import nothing from `training`.
 
 **Why:** Redirects and duplicate checks are the easiest things to break silently when views change, and age limits are only correct if they are tested on the exact boundary dates. As in decision 32, each test was checked by breaking the code on purpose and seeing it fail.
+
+## 39. Which planned day comes next: `next_planned_day(user)`
+
+**Date:** 2026-11-17
+
+**Decision:** `next_planned_day(user)` in `training/services.py` returns the `PlannedDay` the user should do next, or `None`. The next day follows the order of the cycle, not the calendar: a missed day is not skipped, it waits for its turn.
+
+- **No active block, or an active block with no days:** returns `None`. Having no plan is a normal state, not an error, because workouts outside a plan are allowed (entry 26). Raising an exception would force every caller to catch it.
+- **No sessions in the active block yet:** returns the day with the lowest `position`. The plan always starts from the beginning.
+- **After the last session:** returns the day with the lowest `position` greater than the position of the last session's day. If there is none, the cycle wraps around to the day with the lowest `position`. The cycle repeats until the block is no longer active; ending a block is not this service's job.
+- **Gaps in positions:** `position` is unique within a block (entry 18), but nothing prevents gaps (deleting day 2 from 1–2–3–4 leaves 1–3–4). The query looks for the lowest greater position instead of computing `position + 1`, so a gap needs no extra handling and positions never have to be renumbered.
+- **Off-plan sessions are ignored:** sessions are filtered by `user` and `planned_day__training_block` = the active block. A session with `planned_day = NULL` belongs to no block, so the filter leaves it out without a separate check, and an off-plan workout does not move the cycle. The same filter leaves out sessions from earlier blocks, so after a new block is activated, its first suggested day is its first day, whatever was done last in the old block.
+- **An unfinished session (`finished_at` is `NULL`):** returns that session's day, because it has to be finished first. The rule that a user can have only one unfinished session at a time is enforced when a session is started (`start_session`).
+- **Only the user's own sessions count:** filtering by `user` comes first. A session's `planned_day` is not checked against its owner in the database (entry 27), so the service never relies on the block alone.
+- **"The last session"** is the first one in the model's ordering (`-started_at`, `-id`, entry 26), so two sessions with the same start time still give one answer.
+- **Queries:** at most four (the active block, its first day, the last session with its day through `select_related("planned_day")`, and the next day). The next day is looked up in the active block, not through the last session's day.
+
+**Why a service:** the same question is asked by the "today's workout" view, by `start_session`, by the API (week 4) and later by the AI plan generator. Kept in one function, the logic is written once and is tested without HTTP; the view only displays the result.
+
+**Tests:** one test per rule above: no active block; an active block without days; no sessions (first day); the basic case (day 1 → day 2); wrap-around (last day → first day); a gap in positions (1, 3, 4: after day 1 comes day 3); an off-plan session after a planned one (the cycle is counted from the planned one); an unfinished session (its own day is returned); another user's sessions do not change the result. The other user's session points to a day of the first user's block and is newer, because only that setup fails without the filter by `user`: a session in the other user's own block would already be left out by the block filter.
+
+The tests are in `training/tests/test_next_planned_day.py`. Two fixtures were added to the root `conftest.py`: `cycle` (a user, an active block and days at positions 1, 2 and 3) and `finished_session` (a function with keyword-only `user`, `planned_day` and `days_ago` that creates a session finished one hour after it started). `make_session` leaves `finished_at` empty, so a session from it counts as unfinished; tests that need a finished session use `finished_session`. As in entry 38, every test was checked by breaking the code on purpose (for example `position__gte` instead of `position__gt`, `position + 1`, no filter by `user`) and seeing it fail.
+
+**Deferred:**
+
+- A database constraint for "one unfinished session per user": `UniqueConstraint(fields=["user"], condition=Q(finished_at__isnull=True))`, the same partial unique index pattern as entry 16. To be decided together with `start_session`.
+- An unfinished off-plan session is not seen by this service, because the block filter leaves it out, so the service still suggests the next planned day. `start_session` must check for any unfinished session of the user, not only those in the active block.
+- A session that is never finished blocks starting a new one. Possible fixes (a "finish workout" action, closing sessions automatically after a few hours) are left for later.
