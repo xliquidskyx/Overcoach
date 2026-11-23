@@ -47,7 +47,7 @@ INSTALLED_APPS = [
 AUTH_USER_MODEL = "accounts.User"
 
 LOGIN_URL = "accounts:login"
-LOGIN_REDIRECT_URL = "training:home"
+LOGIN_REDIRECT_URL = "training:today"
 LOGOUT_REDIRECT_URL = "accounts:login"
 
 MIDDLEWARE = [

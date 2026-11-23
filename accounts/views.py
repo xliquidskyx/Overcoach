@@ -5,14 +5,14 @@ from .forms import RegisterForm
 
 def register(request):
     if request.user.is_authenticated:
-        return redirect("training:home")
+        return redirect("training:today")
 
     if request.method == "POST":
         form = RegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
             login(request, user)
-            return redirect("training:home")
+            return redirect("training:today")
     else:
         form = RegisterForm()
 

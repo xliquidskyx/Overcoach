@@ -4,7 +4,7 @@ from django.urls import reverse
 from pytest_django.asserts import assertRedirects, assertTemplateUsed
 from training.models import Profile
 
-HOME_URL = reverse("training:home")
+HOME_URL = reverse("training:today")
 ONBOARDING_URL = reverse("training:onboarding")
 LOGIN_URL = reverse("accounts:login")
 
@@ -49,7 +49,7 @@ def test_home_with_profile_returns_status_200(client, make_user, make_profile):
     response = client.get(HOME_URL)
 
     assert response.status_code == 200
-    assertTemplateUsed(response, "training/home.html")
+    assertTemplateUsed(response, "training/today.html")
 
 
 def test_onboarding_without_profile_returns_form(client, make_user):

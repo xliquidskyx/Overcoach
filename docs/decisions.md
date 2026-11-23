@@ -475,10 +475,34 @@ Every constraint from entries 28 and 29 has a test in `training/tests/test_sessi
 
 **Tests:** one test per rule above: no active block; an active block without days; no sessions (first day); the basic case (day 1 → day 2); wrap-around (last day → first day); a gap in positions (1, 3, 4: after day 1 comes day 3); an off-plan session after a planned one (the cycle is counted from the planned one); an unfinished session (its own day is returned); another user's sessions do not change the result. The other user's session points to a day of the first user's block and is newer, because only that setup fails without the filter by `user`: a session in the other user's own block would already be left out by the block filter.
 
-The tests are in `training/tests/test_next_planned_day.py`. Two fixtures were added to the root `conftest.py`: `cycle` (a user, an active block and days at positions 1, 2 and 3) and `finished_session` (a function with keyword-only `user`, `planned_day` and `days_ago` that creates a session finished one hour after it started). `make_session` leaves `finished_at` empty, so a session from it counts as unfinished; tests that need a finished session use `finished_session`. As in entry 38, every test was checked by breaking the code on purpose (for example `position__gte` instead of `position__gt`, `position + 1`, no filter by `user`) and seeing it fail.
+The tests are in `training/tests/test_next_planned_day.py`. Two fixtures were added to the root `conftest.py`: `cycle` (a user, an active block and days at positions 1, 2 and 3) and `make_finished_session` (a function with keyword-only `user`, `planned_day` and `days_ago` that creates a session finished one hour after it started). `make_session` leaves `finished_at` empty, so a session from it counts as unfinished; tests that need a finished session use `make_finished_session`. As in entry 38, every test was checked by breaking the code on purpose (for example `position__gte` instead of `position__gt`, `position + 1`, no filter by `user`) and seeing it fail.
 
 **Deferred:**
 
 - A database constraint for "one unfinished session per user": `UniqueConstraint(fields=["user"], condition=Q(finished_at__isnull=True))`, the same partial unique index pattern as entry 16. To be decided together with `start_session`.
 - An unfinished off-plan session is not seen by this service, because the block filter leaves it out, so the service still suggests the next planned day. `start_session` must check for any unfinished session of the user, not only those in the active block.
 - A session that is never finished blocks starting a new one. Possible fixes (a "finish workout" action, closing sessions automatically after a few hours) are left for later.
+
+## 40. The "today's workout" view
+
+**Date:** 2026-11-23
+
+**Decision:** A `today` view (`training:today`, path `today/` under the `trainings/` prefix, so `/trainings/today/`) is the user's start page. It replaces `home`: `LOGIN_REDIRECT_URL`, the redirects after registration and onboarding, and the brand link in `base.html` all point to `training:today`. Like `home` before it, the view is `@login_required` and sends a user without a profile to `training:onboarding`, so a user who stopped in the middle of onboarding is sent back there at the next login.
+
+The view shows exactly one of three states, checked in this order:
+
+1. **An unfinished session exists** → "In progress" with that session and two buttons, Finish and Continue.
+2. **Otherwise `next_planned_day(user)` returns a day** → that day with its exercises in `position` order.
+3. **Otherwise (`None`)** → an empty state ("You have no active plan"). `None` covers both "no active block" and "an active block with no days" (entry 39), so one message is enough.
+
+- **Why a separate selector `unfinished_session(user)`:** a session must be finished before the next one is started. `next_planned_day` does not see an unfinished off-plan session (entry 39, deferred), so a view built on it alone would offer the next planned day while an old session is still open. `unfinished_session(user)` returns the user's unfinished session (`finished_at` is `NULL`), on-plan or off-plan, or `None`, filtered by `user` first. It uses `.first()` with the model's ordering (`-started_at`, `-id`), so it gives one answer even before the database guarantees there is at most one.
+- **Finish and Continue are not wired yet:** they are rendered in the template only. They will be connected with `finish_session` and the session view (25.11).
+- **Exercises of a day come from `days_with_exercises(user)`:** it returns a queryset of all the user's days (plural name on purpose) with `select_related("training_block")` and a `Prefetch` of `exercises` ordered by `position` with `select_related("exercise")`. Returning a queryset instead of one day lets every view take a day through `get_object_or_404(days_with_exercises(request.user), pk=...)`, so ownership is part of the query.
+- **Where the 404 is tested:** `today` takes no `pk` and reads everything from `request.user`, so it cannot return 404 for another user's object. A small `day_detail(pk)` view (`training:day_detail`, `days/<int:pk>/`) uses `days_with_exercises(request.user)` and returns 404 for a day of another user's block.
+
+**Why:** the start page should answer "what do I do now?" without a click, and an open session must never be hidden behind a new suggestion. Keeping the three-state order in one place, with the logic in services and selectors, means `start_session` (24.11) and the API can ask the same questions.
+
+**Deferred:**
+
+- Whether "at most one unfinished session per user" is also enforced in the database with the partial `UniqueConstraint` from entry 39. To be decided on 24.11 with `start_session`.
+- A session that is forgotten for days still blocks a new one; closing it automatically stays open (entry 39).

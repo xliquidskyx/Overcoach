@@ -6,7 +6,7 @@ from pytest_django.asserts import assertRedirects
 pytestmark = pytest.mark.django_db
 LOGIN_URL = reverse("accounts:login")
 LOGOUT_URL = reverse("accounts:logout")
-HOME_URL = reverse("training:home")
+HOME_URL = reverse("training:today")
 PASSWORD = "s8DXee93_29`~"
 
 

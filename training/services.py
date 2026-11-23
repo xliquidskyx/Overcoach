@@ -68,3 +68,9 @@ def days_with_exercises(user):
             )
         )
     )
+
+
+def unfinished_session(user):
+    session = WorkoutSession.objects.filter(user=user, finished_at=None).first()
+
+    return session

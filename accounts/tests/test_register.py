@@ -24,7 +24,7 @@ def test_register_creates_user_and_logs_in(client):
 
     user = User.objects.get(username="John")
     assert user.email == "j.smith@example.com"
-    assertRedirects(response, reverse("training:home"), fetch_redirect_response=False)
+    assertRedirects(response, reverse("training:today"), fetch_redirect_response=False)
     assert client.session["_auth_user_id"] == str(user.pk)
 
 
@@ -75,7 +75,7 @@ def test_logged_in_user_does_not_see_register_form(client, make_user):
     client.force_login(make_user())
     response = client.get(REGISTER_URL)
 
-    assertRedirects(response, reverse("training:home"), fetch_redirect_response=False)
+    assertRedirects(response, reverse("training:today"), fetch_redirect_response=False)
 
 
 def test_logged_in_user_cannot_send_register_form(client, make_user):
@@ -83,4 +83,4 @@ def test_logged_in_user_cannot_send_register_form(client, make_user):
     response = client.post(REGISTER_URL, register_form_data())
 
     assert User.objects.count() == 1
-    assertRedirects(response, reverse("training:home"), fetch_redirect_response=False)
+    assertRedirects(response, reverse("training:today"), fetch_redirect_response=False)

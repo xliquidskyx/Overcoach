@@ -9,7 +9,7 @@
 <body>
   <header class="site-header">
     <nav class="nav">
-      <a class="nav-brand" href="{% url 'training:home' %}">Overcoach</a>
+      <a class="nav-brand" href="{% url 'training:today' %}">Overcoach</a>
       <div class="nav-user">
         {% if user.is_authenticated %}
           <span class="nav-email">{{ user.email }}</span>
