@@ -6,7 +6,7 @@ from pytest_django.asserts import assertRedirects
 pytestmark = pytest.mark.django_db
 LOGIN_URL = reverse("accounts:login")
 LOGOUT_URL = reverse("accounts:logout")
-HOME_URL = reverse("training:today")
+TODAY_URL = reverse("training:today")
 PASSWORD = "s8DXee93_29`~"
 
 
@@ -14,7 +14,7 @@ def test_login_with_valid_credentials_redirects_home(client, make_user):
     user = make_user(password=PASSWORD)
     response = client.post(LOGIN_URL, {"username": user.username, "password": PASSWORD})
 
-    assertRedirects(response, HOME_URL, fetch_redirect_response=False)
+    assertRedirects(response, TODAY_URL, fetch_redirect_response=False)
     assert client.session["_auth_user_id"] == str(user.pk)
 
 
@@ -30,10 +30,10 @@ def test_login_with_invalid_password_shows_error(client, make_user):
 
 
 def test_unauthorized_user_redirects_to_login(client):
-    response = client.get(HOME_URL)
+    response = client.get(TODAY_URL)
 
     assertRedirects(
-        response, f"{LOGIN_URL}?next={HOME_URL}", fetch_redirect_response=False
+        response, f"{LOGIN_URL}?next={TODAY_URL}", fetch_redirect_response=False
     )
 
 
@@ -56,14 +56,14 @@ def test_next_to_an_unknown_website_is_ignored(client, make_user):
         {"username": user.username, "password": PASSWORD},
     )
 
-    assertRedirects(response, HOME_URL, fetch_redirect_response=False)
+    assertRedirects(response, TODAY_URL, fetch_redirect_response=False)
 
 
 def test_logged_in_user_redirected_from_login_to_home(client, make_user):
     client.force_login(make_user())
     response = client.get(LOGIN_URL)
 
-    assertRedirects(response, HOME_URL, fetch_redirect_response=False)
+    assertRedirects(response, TODAY_URL, fetch_redirect_response=False)
 
 
 def test_logout_redirects_to_login(client, make_user):

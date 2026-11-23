@@ -71,6 +71,10 @@ def days_with_exercises(user):
 
 
 def unfinished_session(user):
-    session = WorkoutSession.objects.filter(user=user, finished_at=None).first()
+    session = (
+        WorkoutSession.objects.filter(user=user, finished_at=None)
+        .select_related("planned_day")
+        .first()
+    )
 
     return session

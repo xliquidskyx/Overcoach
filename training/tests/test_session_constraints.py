@@ -2,7 +2,7 @@ import datetime
 import pytest
 from django.db import IntegrityError
 from django.utils import timezone
-from training.models import Measurement, SetLog, WorkoutSession
+from training.models import Measurement, SetLog
 
 
 def test_two_measurements_per_user_per_day_raise_error(make_measurement):

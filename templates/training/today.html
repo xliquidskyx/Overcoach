@@ -1,9 +1,44 @@
 {% extends "base.html" %}
 
-{% block title %}Overcoach{% endblock %}
+{% block title %}Today · Overcoach{% endblock %}
 
 {% block content %}
-  <h1>Welcome back!</h1>
-  
-  <p>Logged in as {{ user.email }}</p>
+  {% if session %}
+    <h1>In progress</h1>
+    <p>
+      {% if session.planned_day %}
+        {{ session.planned_day.name }}
+      {% else %}
+        Off-plan workout
+      {% endif %}
+    </p>
+    <p>Started {{ session.started_at|date:"d.m.Y H:i" }}</p>
+    {# Wired up with finish_session and the session view (25.11). #}
+    <div class="session-actions">
+      <button type="button" disabled>Continue</button>
+      <button type="button" disabled>Finish</button>
+    </div>
+  {% elif day %}
+    <h1>{{ day.name }}</h1>
+    <ul class="exercise-list">
+      {% for planned_exercise in day.exercises.all %}
+        <li>
+          <strong>{{ planned_exercise }}</strong>
+          {{ planned_exercise.sets }} ×
+          {% if planned_exercise.reps_min == planned_exercise.reps_max %}
+            {{ planned_exercise.reps_min }}
+          {% else %}
+            {{ planned_exercise.reps_min }}–{{ planned_exercise.reps_max }}
+          {% endif %}
+          {% if planned_exercise.weight is not None %}
+            · {{ planned_exercise.weight|floatformat:"-2" }} kg
+          {% endif %}
+        </li>
+      {% empty %}
+        <li>No exercises planned for this day.</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>You have no active plan.</p>
+  {% endif %}
 {% endblock %}
