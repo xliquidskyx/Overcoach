@@ -183,7 +183,7 @@ def cycle(db, make_user, make_block, make_day):
 
 
 @pytest.fixture
-def finished_session(make_session):
+def make_finished_session(make_session):
     def _create_finished_session(*, user, planned_day, days_ago):
         now = timezone.now()
         started_at = now - timedelta(days=days_ago)
@@ -197,3 +197,39 @@ def finished_session(make_session):
         )
 
     return _create_finished_session
+
+
+@pytest.fixture
+def other_user(db, make_user, make_block, make_day):
+    user = make_user()
+    training_block = make_block(user=user, is_active=True)
+    day = make_day(training_block=training_block)
+
+    return {"user": user, "training_block": training_block, "day": day}
+
+
+@pytest.fixture
+def day_with_unordered_exercises(
+    db, make_user, make_block, make_day, make_planned_exercise
+):
+    user = make_user()
+    training_block = make_block(user=user, is_active=True)
+    day = make_day(training_block=training_block, position=1)
+    exercise3 = make_planned_exercise(planned_day=day, position=3)
+    exercise1 = make_planned_exercise(planned_day=day, position=1)
+    exercise2 = make_planned_exercise(planned_day=day, position=2)
+
+    return {
+        "user": user,
+        "training_block": training_block,
+        "planned_day": day,
+        "exercise3": exercise3,
+        "exercise1": exercise1,
+        "exercise2": exercise2,
+    }
+
+
+@pytest.fixture
+def user_with_password(make_user):
+    password = "S3cret-pass!"
+    return {"user": make_user(password=password), "password": password}

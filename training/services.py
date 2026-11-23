@@ -1,5 +1,6 @@
 from django.db import transaction
-from .models import Profile, TrainingBlock, WorkoutSession
+from django.db.models import Prefetch
+from .models import Profile, PlannedDay, PlannedExercise, TrainingBlock, WorkoutSession
 
 
 @transaction.atomic
@@ -52,3 +53,18 @@ def next_planned_day(user):
         return first_day
 
     return next_day
+
+
+def days_with_exercises(user):
+    return (
+        PlannedDay.objects.filter(training_block__user=user)
+        .select_related("training_block")
+        .prefetch_related(
+            Prefetch(
+                "exercises",
+                queryset=PlannedExercise.objects.select_related("exercise").order_by(
+                    "position"
+                ),
+            )
+        )
+    )
