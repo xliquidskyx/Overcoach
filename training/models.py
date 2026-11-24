@@ -181,7 +181,12 @@ class WorkoutSession(models.Model):
             CheckConstraint(
                 condition=Q(finished_at__gte=F("started_at")),
                 name="workout_session_finished_at_after_started_at",
-            )
+            ),
+            UniqueConstraint(
+                fields=["user"],
+                condition=Q(finished_at=None),
+                name="workout_session_one_unfinished_per_user",
+            ),
         ]
         ordering = ["-started_at", "-id"]
 

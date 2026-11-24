@@ -2,7 +2,7 @@ import datetime
 import pytest
 from django.db import IntegrityError
 from django.utils import timezone
-from training.models import Measurement, SetLog
+from training.models import Measurement, SetLog, WorkoutSession
 
 
 def test_two_measurements_per_user_per_day_raise_error(make_measurement):
@@ -122,3 +122,39 @@ def test_set_rir_at_range_end_creates_object(make_set_log):
 def test_set_rir_out_of_range_raises_error(make_set_log, rir):
     with pytest.raises(IntegrityError):
         make_set_log(rir=rir)
+
+
+def test_second_unfinished_session_raises_error(make_user, make_session):
+    user = make_user()
+    make_session(user=user)
+
+    with pytest.raises(IntegrityError):
+        make_session(user=user)
+
+
+def test_other_user_unfinished_session_does_not_raise_error(make_user, make_session):
+    user = make_user()
+    other = make_user()
+    make_session(user=user)
+    make_session(user=other)
+
+    assert WorkoutSession.objects.filter(user=user).count() == 1
+    assert WorkoutSession.objects.filter(user=other).count() == 1
+
+
+def test_finished_session_allows_to_start_new_session(
+    make_user, make_finished_session, make_session
+):
+    user = make_user()
+    make_finished_session(user=user, planned_day=None, days_ago=1)
+    make_session(user=user)
+
+    assert WorkoutSession.objects.filter(user=user).count() == 2
+
+
+def test_two_finished_sessions_do_not_raise_error(make_user, make_finished_session):
+    user = make_user()
+    make_finished_session(user=user, planned_day=None, days_ago=2)
+    make_finished_session(user=user, planned_day=None, days_ago=1)
+
+    assert WorkoutSession.objects.filter(user=user).count() == 2
