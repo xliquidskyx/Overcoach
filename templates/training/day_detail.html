@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block title %}{{ day.name }} · Overcoach{% endblock %}
+
+{% block content %}
+  <h1>{{ day.name }}</h1>
+  <p>{{ day.training_block }}</p>
+  {% include "training/_exercise_list.html" %}
+  <p><a href="{% url 'training:today' %}">Back to today</a></p>
+{% endblock %}

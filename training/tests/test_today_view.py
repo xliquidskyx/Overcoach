@@ -7,14 +7,6 @@ pytestmark = pytest.mark.django_db
 TODAY_URL = reverse("training:today")
 
 
-@pytest.fixture
-def logged_in_cycle(client, cycle, make_profile):
-    make_profile(user=cycle["user"])
-    client.force_login(cycle["user"])
-
-    return cycle
-
-
 def test_profile_without_block_shows_empty_state(client, make_user, make_profile):
     user = make_user()
     make_profile(user=user)

@@ -1,5 +1,5 @@
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, render, redirect
 from .forms import ProfileForm
 from .services import (
     create_profile,
@@ -49,3 +49,22 @@ def onboarding(request):
         form = ProfileForm()
 
     return render(request, "training/onboarding.html", {"form": form})
+
+
+@login_required
+def day_detail(request, pk):
+    """One planned day of the user's own plan.
+
+    The day is looked up in days_with_exercises(request.user), so a day
+    from another user's block returns 404. Days from inactive blocks are
+    included on purpose: they are the user's own history. No profile
+    check: a user without a profile has no days, so they get 404 anyway.
+
+    Context:
+        day: the PlannedDay with its training block and its exercises
+             prefetched in position order. Never None (404 instead).
+    """
+
+    day = get_object_or_404(days_with_exercises(request.user), pk=pk)
+
+    return render(request, "training/day_detail.html", {"day": day})

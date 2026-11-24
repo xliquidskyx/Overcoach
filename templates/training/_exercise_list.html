@@ -1,0 +1,19 @@
+{# Exercises of one planned day. Expects `day` with exercises prefetched (days_with_exercises). #}
+<ul class="exercise-list">
+  {% for planned_exercise in day.exercises.all %}
+    <li>
+      <strong>{{ planned_exercise }}</strong>
+      {{ planned_exercise.sets }} ×
+      {% if planned_exercise.reps_min == planned_exercise.reps_max %}
+        {{ planned_exercise.reps_min }}
+      {% else %}
+        {{ planned_exercise.reps_min }}–{{ planned_exercise.reps_max }}
+      {% endif %}
+      {% if planned_exercise.weight is not None %}
+        · {{ planned_exercise.weight|floatformat:"-2" }} kg
+      {% endif %}
+    </li>
+  {% empty %}
+    <li>No exercises planned for this day.</li>
+  {% endfor %}
+</ul>

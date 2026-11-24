@@ -230,6 +230,8 @@ def day_with_unordered_exercises(
 
 
 @pytest.fixture
-def user_with_password(make_user):
-    password = "S3cret-pass!"
-    return {"user": make_user(password=password), "password": password}
+def logged_in_cycle(client, cycle, make_profile):
+    make_profile(user=cycle["user"])
+    client.force_login(cycle["user"])
+
+    return cycle
