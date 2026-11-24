@@ -479,7 +479,7 @@ The tests are in `training/tests/test_next_planned_day.py`. Two fixtures were ad
 
 **Deferred:**
 
-- A database constraint for "one unfinished session per user": `UniqueConstraint(fields=["user"], condition=Q(finished_at__isnull=True))`, the same partial unique index pattern as entry 16. To be decided together with `start_session`.
+- A database constraint for "one unfinished session per user": `UniqueConstraint(fields=["user"], condition=Q(finished_at__isnull=True))`, the same partial unique index pattern as entry 16. To be decided together with `start_session`. Decided in entry 41.
 - An unfinished off-plan session is not seen by this service, because the block filter leaves it out, so the service still suggests the next planned day. `start_session` must check for any unfinished session of the user, not only those in the active block.
 - A session that is never finished blocks starting a new one. Possible fixes (a "finish workout" action, closing sessions automatically after a few hours) are left for later.
 
@@ -502,11 +502,46 @@ The template gets two context keys, session and day; at most one of them is set.
 - **Exercises of a day come from `days_with_exercises(user)`:** it returns a queryset of all the user's days (plural name on purpose) with `select_related("training_block")` and a `Prefetch` of `exercises` ordered by `position` with `select_related("exercise")`. Returning a queryset instead of one day lets every view take a day through `get_object_or_404(days_with_exercises(request.user), pk=...)`, so ownership is part of the query.
 - **Queries**: unfinished_session uses select_related("planned_day"), because the "In progress" state shows the day's name; the FK is nullable, so Django uses a LEFT OUTER JOIN and an off-plan session is still found. When there is no session, the day from next_planned_day is fetched again through days_with_exercises(user).get(pk=day.pk): one more query for the day, but its exercises come in one prefetch query, already ordered by position and with their Exercise, so the template's loop makes no queries of its own.
 - **Where the 404 is tested:** `today` takes no `pk` and reads everything from `request.user`, so it cannot return 404 for another user's object. A small `day_detail(pk)` view (`training:day_detail`, `days/<int:pk>/`) uses `days_with_exercises(request.user)` and returns 404 for a day of another user's block.
-day_detail has one context key, day, and never renders without it (404 instead). It does not check for a profile: a user without one has no days, so they get 404 anyway, and the extra check would be code without a case. Days from inactive blocks are included, because they are the user's own history; training/tests/test_day_detail_view.py covers this.day_detail has one context key, day, and never renders without it (404 instead). It does not check for a profile: a user without one has no days, so they get 404 anyway, and the extra check would be code without a case. Days from inactive blocks are included, because they are the user's own history; training/tests/test_day_detail_view.py covers this.
+day_detail has one context key, day, and never renders without it (404 instead). It does not check for a profile: a user without one has no days, so they get 404 anyway, and the extra check would be code without a case. Days from inactive blocks are included, because they are the user's own history; training/tests/test_day_detail_view.py covers this.
 
 **Why:** the start page should answer "what do I do now?" without a click, and an open session must never be hidden behind a new suggestion. Keeping the three-state order in one place, with the logic in services and selectors, means `start_session` (24.11) and the API can ask the same questions.
 
 **Deferred:**
 
-- Whether "at most one unfinished session per user" is also enforced in the database with the partial `UniqueConstraint` from entry 39. To be decided on 24.11 with `start_session`.
+- Whether "at most one unfinished session per user" is also enforced in the database with the partial `UniqueConstraint` from entry 39. To be decided on 24.11 with `start_session`. Decided in entry 41.
 - A session that is forgotten for days still blocks a new one; closing it automatically stays open (entry 39).
+
+## 41. Starting a workout session: `start_session(user)` and one unfinished session per user
+
+**Date:** 2026-11-24
+
+**Decision:** A user can have at most one unfinished session (`finished_at` is `NULL`) at a time, on-plan or off-plan. The rule is enforced in two layers.
+
+- **Database:** a `UniqueConstraint` on `user` with `condition=Q(finished_at__isnull=True)` (`workout_session_one_unfinished_per_user`, migration `0008`), the same pattern as the one active block per user in entry 16. PostgreSQL cannot put a `WHERE` on a table constraint, so it builds a partial unique index (`CREATE UNIQUE INDEX ... ON ("user_id") WHERE "finished_at" IS NULL`). Only unfinished sessions are in that index, so it holds at most one row per user, however long the workout history grows.
+- **Service:** `start_session(user)` in `training/services.py` returns a `(session, created)` tuple, like `get_or_create`:
+  1. It checks `unfinished_session(user)` first, before the plan is consulted. If there is an open session, it returns `(that_session, False)` and creates nothing, so the start button also works as "continue".
+  2. Otherwise it creates a session with `planned_day = next_planned_day(user)`; `started_at` comes from the model default.
+  3. If `next_planned_day` returns `None` (no active block, or an active block with no days, entry 39), the new session is off-plan (`planned_day = NULL`). Off-plan workouts are allowed (entry 26), and having no plan is a normal state, not an error.
+
+**Double submit and concurrency:** the check and the insert are two separate steps, so two requests (a double tap on the phone) can both pass the check. `transaction.atomic()` alone does not prevent that: under PostgreSQL's default READ COMMITTED isolation the second transaction does not see the first one's uncommitted row, and `select_for_update()` cannot lock a row that does not exist yet. The partial unique index is what rejects the second insert.
+
+- The service wraps only the `create` in an inner `transaction.atomic()` and catches `IntegrityError` outside that block. It then fetches the open session with `WorkoutSession.objects.get(user=user, finished_at__isnull=True)` and returns `(session, False)`, so a double submit behaves like a single one.
+- **Why the inner `atomic`:** after an `IntegrityError`, PostgreSQL marks the current transaction as aborted and rejects every further query. The inner `atomic` creates a savepoint, and Django rolls back only to it, so the outer transaction stays usable. Without it the code would work by accident in autocommit mode, but inside any outer transaction (every pytest-django test, `ATOMIC_REQUESTS`, a caller's own `atomic`) the `.get` would raise `TransactionManagementError`. The race test was checked this way: removing the inner `atomic` makes it fail with exactly that error.
+- **Why `.get` and not the selector:** after the error the open session must exist, and `.get` raises loudly if it does not. The race test also replaces the selector, so calling it again would hide the case being tested.
+- **Why a broad `except IntegrityError`:** the only other integrity error this insert can hit is a foreign key failure (the user deleted in the meantime). Then `.get` raises `DoesNotExist`, so nothing is swallowed silently.
+
+**Alternatives considered:**
+
+- A check in the service only: misses concurrent requests.
+- `select_for_update()` on the user's row to serialize session starts: it would work, but it protects only the code that remembers to take the lock. The constraint protects every path: views, the API, the admin and the shell.
+- Raising an exception when a session is already open: the view would have to handle it, while returning the open session gives one simple flow (start → redirect to `today`, which shows "In progress").
+- Raising an exception when there is no plan: rejected for the same reasons as returning `None` in entry 39.
+- Catching only this constraint by checking `e.__cause__.diag.constraint_name`: unnecessary, see the broad `except` above.
+
+**Tests:** `training/tests/test_session_constraints.py` covers the constraint: a second unfinished session of the same user raises `IntegrityError`; another user's unfinished session, a finished session with an unfinished one, and two finished sessions are all allowed. `training/tests/test_start_session.py` has one test per rule: the first session starts at day 1; after a finished day 1 comes day 2; an open on-plan session is returned; an open off-plan session is returned even when a block is active; another user's open session does not block; without an active block an off-plan session is created; without a block an open off-plan session is still returned instead of a new one. The race test arranges an open session and uses `monkeypatch` to make `training.services.unfinished_session` return `None`, so the insert hits the constraint, and checks that the existing session comes back with `created=False`. Tests that must not create anything also count the sessions in the database, so they check the service's contract even without the constraint. Since the constraint, a second `make_session(user=u)` for the same user raises `IntegrityError`; tests that need past workouts use `make_finished_session`. As in entry 39, every test was checked by breaking the code on purpose (no early check, the check moved after `next_planned_day`, `planned_day__isnull=False` or no `user` filter in the selector, no inner `atomic`) and seeing it fail.
+
+**Deferred:**
+
+- Starting an off-plan workout on purpose while a block is active. For now an off-plan session is created only when there is no plan.
+- A start button in the empty state of `today` (entry 40), so a user without a plan can start an off-plan session. It comes with the session views on 25.11, together with `finish_session` and the POST view that calls `start_session`.
+- A session that is never finished still blocks a new one (entry 39).

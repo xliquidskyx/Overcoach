@@ -1,4 +1,4 @@
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import Prefetch
 from .models import Profile, PlannedDay, PlannedExercise, TrainingBlock, WorkoutSession
 
@@ -78,3 +78,42 @@ def unfinished_session(user):
     )
 
     return session
+
+
+def start_session(user):
+    """Start a workout session for ``user``, or return the one in progress.
+
+    Returns a ``(session, created)`` tuple, like ``get_or_create``:
+
+    - If the user already has an unfinished session (planned or off-plan),
+      return ``(that_session, False)`` and create nothing. This check comes
+      first, before the plan is consulted.
+    - Otherwise create a session with ``planned_day = next_planned_day(user)``
+      and return ``(new_session, True)``. If there is no active block, or the
+      active block has no days, ``planned_day`` is ``None`` and the session
+      is off-plan (decision 41).
+
+    At most one unfinished session per user is also enforced in the database
+    (``workout_session_one_unfinished_per_user``). If a concurrent request
+    creates one between the check and the insert, the resulting
+    ``IntegrityError`` is caught and the existing session is returned with
+    ``created=False``, so a double submit behaves like a single one.
+
+    ``started_at`` comes from the model default (``timezone.now``).
+    """
+
+    active_session = unfinished_session(user)
+
+    if active_session is not None:
+        return (active_session, False)
+
+    planned_day = next_planned_day(user=user)
+
+    try:
+        with transaction.atomic():
+            session = WorkoutSession.objects.create(user=user, planned_day=planned_day)
+    except IntegrityError:
+        session = WorkoutSession.objects.get(user=user, finished_at__isnull=True)
+        return (session, False)
+
+    return (session, True)
