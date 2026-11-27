@@ -545,3 +545,44 @@ day_detail has one context key, day, and never renders without it (404 instead).
 - Starting an off-plan workout on purpose while a block is active. For now an off-plan session is created only when there is no plan.
 - A start button in the empty state of `today` (entry 40), so a user without a plan can start an off-plan session. It comes with the session views on 25.11, together with `finish_session` and the POST view that calls `start_session`.
 - A session that is never finished still blocks a new one (entry 39).
+
+## 42. Logging sets and finishing a session: `log_set` and `finish_session`
+
+**Date:** 2026-11-27
+
+**Decision:** two services in `training/services.py` complete the workout flow started in entry 41. Both take the acting `user` explicitly, check ownership themselves, and return a `(object, created)` tuple like `start_session`, so a double submit is reported as `created=False` instead of an error. Errors are raised as plain exceptions from `training/exceptions.py` (`SetLogError`, `FinishSessionError`); the views will turn them into form errors.
+
+**`log_set(user, session, *, exercise, weight, reps, planned_exercise=None)`:**
+
+- **Checks, in this order:** the session belongs to `user` (`session.user_id != user.id`), then a given `planned_exercise` belongs to the session's planned day (`planned_exercise.planned_day_id != session.planned_day_id`). Both compare `_id` fields, so they cost no queries. Ownership comes first, so another user never learns anything about a session that is not theirs. These are the two rules the database cannot enforce (entry 29).
+- **The plan's owner is checked indirectly.** Once the session belongs to `user` and the planned exercise belongs to the session's day, a planned exercise from another user's plan is rejected by the day rule, so no separate check is needed.
+- **Off-plan sessions** (`planned_day = NULL`) accept sets without a `planned_exercise` and reject sets with one. The same day rule covers this, because `None` never equals a day's id.
+- **Exercise swaps:** `exercise` may differ from `planned_exercise.exercise` (for example when a machine is taken). The set keeps the planned exercise it replaces, so progress per plan item stays readable. There is deliberately no equality check.
+- **Finished sessions accept sets** and `finished_at` is not changed. This prepares for editing a past workout; the edit view does not exist yet, and `today` shows no set form for a finished session.
+- **Set numbers are assigned by the service** as the highest existing number + 1 (`Max("set_number")`, `0` when there are none), counted per session **and exercise**, matching the constraint `set_log_set_number_unique_per_session_exercise`. A swapped-in exercise therefore starts at set 1. `Max` and not `count()`: once sets can be deleted, `count() + 1` would hit an existing number (sets 1 and 3 → 3) and every further set of that exercise would fail. The calculation is the module-level helper `_next_set_number`, so the race test can replace it.
+
+**Double submit in `log_set`:** two requests compute the same number, and the unique constraint rejects the second insert. As in entry 41, only the `create` is wrapped in an inner `transaction.atomic()` and `IntegrityError` is caught outside it. The number is computed once before the `try`, and the `except` looks up the set with exactly that number and returns `(existing, False)`, so the first request wins. **Known cost:** if the second request carried different `weight` or `reps`, they are silently dropped; for a double tap by one user that is acceptable.
+
+- **`.filter(...).first()` and a bare `raise` instead of `.get()`** (unlike entry 41): `SetLog` has more constraints (`reps > 0`, `weight` between 0 and 1000), and they raise `IntegrityError` too. With `.get()` an invalid value would surface as a misleading `SetLog.DoesNotExist`. Now an existing set is returned only when the race really happened, and every other integrity error is re-raised unchanged. Forms validate these values first, but the service must stay correct when it is called directly, for example from the API.
+
+**`finish_session(user, session)`:**
+
+- **Checks, in this order:** ownership, then that the session has at least one set (`session.sets.exists()`). An empty workout must not move the plan's cycle forward (entry 39). Ownership is an explicit check and not only a filter in the update: with only a filter, another user's session would update 0 rows and look like the no-op below instead of raising.
+- **Finishing twice is a no-op** (`created=False`, `finished_at` unchanged), not an error: a double tap sends the same request twice, and the first one is the right one.
+- **A conditional `UPDATE` instead of check-then-`save()`:** `WorkoutSession.objects.filter(pk=..., finished_at__isnull=True).update(finished_at=timezone.now())`. The database does the check and the write in one statement, so two concurrent requests cannot both finish the session, and the second one cannot overwrite the time with a later one. `update()` returns the number of changed rows (`1` = finished now, `0` = already finished) and bypasses `save()`, so the service calls `refresh_from_db()` before returning the session. No test can force this choice, because the race needs two connections; it is a design decision.
+- **Two races, two tools:** inserting a row (`log_set`, `start_session`) relies on a unique constraint and `IntegrityError` caught around an inner `atomic`; changing a row (`finish_session`) relies on a conditional `UPDATE`.
+
+**Alternatives considered:**
+
+- Raising an error on a duplicate set or a second finish: the view would have to handle a case that is not a user mistake.
+- Retrying the insert with the next number after `IntegrityError`: a double tap would then log the same set twice.
+- Rejecting sets for finished sessions: simpler today, but would have to be undone for the edit view.
+- Allowing a session without sets to be finished: an accidental start would then move the cycle forward.
+
+**Tests:** `training/tests/test_log_set.py` uses the `plan_session` fixture (a session on day 1 of `cycle`, a planned exercise on day 1 and on day 2, and an extra exercise) and a local `off_plan` fixture (an off-plan session of `other_user` and a planned exercise from that user's own plan). One test per rule: a valid set, a swapped exercise, the second set gets number 2, a gap (sets 1 and 3 → 4), numbering per exercise, a planned exercise from another day, another user's session, a finished session, off-plan with and without a planned exercise, the race (the existing set is returned, with the first request's weight), and another `IntegrityError` (`reps=0`) that is not swallowed. Error tests use `pytest.raises(..., match=...)` around one call, because several rules raise the same exception, and count the sets afterwards. `training/tests/test_finish_session.py`: a session with a set is finished; an integration test (`start_session` → `log_set` → `finish_session` → `next_planned_day` returns day 2); finishing twice keeps the first `finished_at`; a session without sets and another user's session raise and stay unfinished. Every test was checked by breaking the code on purpose (the planned-day rule, the ownership checks, `Max` → `count()`, `exercise` removed from the numbering filter, the inner `atomic`, the re-raise, `finished_at__isnull`, the sets check, `refresh_from_db`) and seeing the right test fail. Test 7b of `log_set` and tests 3–5 of `finish_session` were written by Claude and reviewed by the author.
+
+**Deferred:**
+
+- `cancel_session`: deleting an unfinished session without sets, planned for next week. Until then, a workout started by mistake cannot be finished (no sets) and blocks a new one (entry 41); the only way out is the admin.
+- A view for editing a finished session (adding, changing and deleting sets). `log_set` already accepts finished sessions, and `Max` numbering already handles deleted sets.
+- The POST views for start, set and finish, and HTMX for the set form.
