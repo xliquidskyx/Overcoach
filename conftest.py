@@ -1,17 +1,19 @@
+import itertools
 from datetime import date, timedelta
 from decimal import Decimal
-import itertools
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+
 from training.models import (
     Exercise,
-    Profile,
-    TrainingBlock,
     Measurement,
     PlannedDay,
     PlannedExercise,
+    Profile,
     SetLog,
+    TrainingBlock,
     WorkoutSession,
 )
 
@@ -235,3 +237,20 @@ def logged_in_cycle(client, cycle, make_profile):
     client.force_login(cycle["user"])
 
     return cycle
+
+
+@pytest.fixture
+def plan_session(cycle, make_session, make_planned_exercise, make_exercise):
+    user = cycle["user"]
+    session = make_session(user=user, planned_day=cycle["day1"])
+    pe_day1 = make_planned_exercise(planned_day=cycle["day1"])
+    pe_day2 = make_planned_exercise(planned_day=cycle["day2"])
+    exercise_alt = make_exercise(name="Bulgarian Split Squat")
+
+    return {
+        "user": user,
+        "session": session,
+        "pe_day1": pe_day1,
+        "pe_day2": pe_day2,
+        "exercise_alt": exercise_alt,
+    }

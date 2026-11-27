@@ -1,7 +1,9 @@
-import pytest
 from datetime import date, timedelta
+
+import pytest
 from django.utils import timezone
-from training.forms import ProfileForm, MIN_HEIGHT, MAX_HEIGHT, MIN_AGE, MAX_AGE
+
+from training.forms import MAX_AGE, MAX_HEIGHT, MIN_AGE, MIN_HEIGHT, ProfileForm
 
 FIXED_TODAY = date(2026, 11, 15)
 TURNS_MIN_AGE_TODAY = FIXED_TODAY.replace(year=FIXED_TODAY.year - MIN_AGE)

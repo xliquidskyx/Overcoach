@@ -2,7 +2,6 @@ import pytest
 from django.urls import reverse
 from pytest_django.asserts import assertContains
 
-
 pytestmark = pytest.mark.django_db
 TODAY_URL = reverse("training:today")
 

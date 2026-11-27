@@ -1,6 +1,16 @@
-from django.db import transaction, IntegrityError
-from django.db.models import Prefetch
-from .models import Profile, PlannedDay, PlannedExercise, TrainingBlock, WorkoutSession
+from django.db import IntegrityError, transaction
+from django.db.models import Max, Prefetch
+from django.utils import timezone
+
+from .exceptions import FinishSessionError, SetLogError
+from .models import (
+    PlannedDay,
+    PlannedExercise,
+    Profile,
+    SetLog,
+    TrainingBlock,
+    WorkoutSession,
+)
 
 
 @transaction.atomic
@@ -114,6 +124,62 @@ def start_session(user):
             session = WorkoutSession.objects.create(user=user, planned_day=planned_day)
     except IntegrityError:
         session = WorkoutSession.objects.get(user=user, finished_at__isnull=True)
-        return (session, False)
+        return session, False
 
-    return (session, True)
+    return session, True
+
+
+def _next_set_number(session, exercise):
+    last = SetLog.objects.filter(session=session, exercise=exercise).aggregate(
+        last=Max("set_number")
+    )["last"]
+    return (last or 0) + 1
+
+
+def log_set(user, session, *, exercise, weight, reps, planned_exercise=None):
+    if session.user_id != user.id:
+        raise SetLogError("session does not belong to the user")
+
+    if (
+        planned_exercise is not None
+        and planned_exercise.planned_day_id != session.planned_day_id
+    ):
+        raise SetLogError(
+            "planned exercise does not belong to the session's planned day"
+        )
+
+    set_number = _next_set_number(session, exercise)
+    try:
+        with transaction.atomic():
+            set_log = SetLog.objects.create(
+                session=session,
+                exercise=exercise,
+                planned_exercise=planned_exercise,
+                set_number=set_number,
+                weight=weight,
+                reps=reps,
+            )
+    except IntegrityError:
+        existing = SetLog.objects.filter(
+            session=session, exercise=exercise, set_number=set_number
+        ).first()
+        if existing is None:
+            raise
+        return existing, False
+
+    return set_log, True
+
+
+def finish_session(user, session):
+    if session.user_id != user.id:
+        raise FinishSessionError("session does not belong to the user")
+
+    if not session.sets.exists():
+        raise FinishSessionError("session has no sets")
+
+    updated = WorkoutSession.objects.filter(
+        pk=session.pk, finished_at__isnull=True
+    ).update(finished_at=timezone.now())
+    session.refresh_from_db()
+
+    return session, updated == 1

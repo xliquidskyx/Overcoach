@@ -1,6 +1,6 @@
-from django.db import models
-from django.db.models import CheckConstraint, UniqueConstraint, Q, F
 from django.conf import settings
+from django.db import models
+from django.db.models import CheckConstraint, F, Q, UniqueConstraint
 from django.utils import timezone
 
 

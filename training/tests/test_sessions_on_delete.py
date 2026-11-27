@@ -1,6 +1,7 @@
 import pytest
 from django.contrib.auth import get_user_model
 from django.db.models import ProtectedError
+
 from training.models import Exercise, Measurement, PlannedDay, SetLog, WorkoutSession
 
 User = get_user_model()

@@ -1,8 +1,10 @@
 from datetime import date
+
 import pytest
 from django.db import IntegrityError
-from training.services import create_profile, has_profile
+
 from training.models import Profile
+from training.services import create_profile, has_profile
 
 pytestmark = pytest.mark.django_db
 

@@ -1,7 +1,9 @@
-import pytest
 from datetime import date
+
+import pytest
 from django.urls import reverse
 from pytest_django.asserts import assertRedirects, assertTemplateUsed
+
 from training.models import Profile
 
 TODAY_URL = reverse("training:today")

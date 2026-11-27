@@ -1,7 +1,9 @@
 import datetime
+
 import pytest
 from django.db import IntegrityError
 from django.utils import timezone
+
 from training.models import Measurement, SetLog, WorkoutSession
 
 

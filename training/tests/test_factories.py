@@ -1,14 +1,13 @@
 import pytest
-
 from django.contrib.auth import get_user_model
 
 from training.models import (
     Exercise,
     Measurement,
-    Profile,
-    SetLog,
     PlannedDay,
     PlannedExercise,
+    Profile,
+    SetLog,
     WorkoutSession,
 )
 
